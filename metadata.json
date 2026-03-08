@@ -1,0 +1,5 @@
+{
+  "name": "FORGE",
+  "description": "Mission-critical operations dashboard for multi-domain system monitoring and incident response.",
+  "requestFramePermissions": []
+}
