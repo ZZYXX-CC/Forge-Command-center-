@@ -404,6 +404,67 @@ async function startServer() {
     });
   });
 
+  app.get('/api/p2p-trading-state', (req, res) => {
+    const now = new Date();
+    const p2pState = {
+      pair: "USDT/NGN",
+      lastSync: now.toISOString(),
+      streamHealth: "HEALTHY",
+      kpis: {
+        spread: 2.76,
+        spreadChange: -0.12,
+        topOfBook: 1540.2,
+        volatility: 0.41,
+        liquidityProxy: 24500,
+      },
+      snapshots: Array.from({ length: 20 }).map((_, i) => ({
+        timestamp: new Date(now.getTime() - i * 60000).toISOString(),
+        token: "USDT",
+        fiat: "NGN",
+        paymentMethod: i % 3 === 0 ? "Bank Transfer" : i % 3 === 1 ? "Opay" : "PalmPay",
+        bestBuyPrice: 1540.2 + Math.random() * 5,
+        bestSellPrice: 1582.7 + Math.random() * 5,
+        spreadAbs: 42.5 + Math.random() * 2,
+        spreadPct: 2.76 + Math.random() * 0.1,
+        buyDepthTop5: 24500 + Math.random() * 1000,
+        sellDepthTop5: 19800 + Math.random() * 1000,
+        depthImbalance: 0.106 + Math.random() * 0.05,
+        volatility1h: 0.41 + Math.random() * 0.05,
+        sampleCount: 120,
+        healthFlag: "OK",
+      })),
+      history: Array.from({ length: 24 }).map((_, i) => ({
+        bucketStart: new Date(now.getTime() - (i + 1) * 3600000).toISOString(),
+        bucketEnd: new Date(now.getTime() - i * 3600000).toISOString(),
+        avgSpreadPct: 2.5 + Math.random() * 0.5,
+        minSpreadPct: 2.1 + Math.random() * 0.2,
+        maxSpreadPct: 3.2 + Math.random() * 0.3,
+        p50SpreadPct: 2.4 + Math.random() * 0.2,
+        p90SpreadPct: 2.9 + Math.random() * 0.2,
+        volatility: 0.35 + Math.random() * 0.1,
+        avgDepthImbalance: 0.08 + Math.random() * 0.04,
+        samples: 3600,
+      })),
+      heatmap: Array.from({ length: 24 * 3 }).map((_, i) => ({
+        hour: i % 24,
+        day: i < 24 ? "Today" : i < 48 ? "Yesterday" : "2 Days Ago",
+        opportunityScore: Math.floor(Math.random() * 100),
+      })),
+      alerts: [
+        { id: '1', timestamp: now.toISOString(), type: 'INFO', message: 'Spread compression detected on Bank Transfer', rule: 'spread_compression' },
+        { id: '2', timestamp: new Date(now.getTime() - 300000).toISOString(), type: 'WARNING', message: 'Volatility spike on Opay', rule: 'volatility_spike' },
+      ],
+      health: {
+        latencyP50: 142,
+        latencyP95: 450,
+        missingSampleRatio: 0.02,
+        lastIngest: now.toISOString(),
+        confidenceScore: 94,
+      }
+    };
+    res.json(p2pState);
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

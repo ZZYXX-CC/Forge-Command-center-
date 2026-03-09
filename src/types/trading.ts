@@ -1,117 +1,169 @@
 import { z } from 'zod';
 
-export const TradingModeSchema = z.enum(['PAPER', 'DEMO', 'LIVE']);
-export type TradingMode = z.infer<typeof TradingModeSchema>;
-
-export const EndpointStatusSchema = z.enum(['connected', 'disconnected', 'degraded', 'stale']);
-export type EndpointStatus = z.infer<typeof EndpointStatusSchema>;
-
-export const TradingHealthSchema = z.object({
-  mode: TradingModeSchema,
-  auth: EndpointStatusSchema,
-  ws: EndpointStatusSchema,
-  orderApi: EndpointStatusSchema,
-  lastUpdate: z.string(),
-  isStale: z.boolean(),
-});
-export type TradingHealth = z.infer<typeof TradingHealthSchema>;
-
-export const PnLSummarySchema = z.object({
-  session: z.number(),
-  day: z.number(),
-  week: z.number(),
-  realized: z.number(),
-  unrealized: z.number(),
-  marginUsage: z.number(), // percentage 0-100
-  totalOpenRisk: z.number(),
-  maxDrawdown: z.number(),
-  drawdownLimit: z.number(),
-});
-export type PnLSummary = z.infer<typeof PnLSummarySchema>;
-
-export const PositionSchema = z.object({
-  id: z.string(),
-  symbol: z.string(),
-  side: z.enum(['LONG', 'SHORT']),
-  size: z.number(),
-  entry: z.number(),
-  mark: z.number(),
-  liq: z.number(),
-  uPnL: z.number(),
-  roe: z.number(),
-  age: z.string(),
-  strategy: z.string(),
-  riskFlag: z.enum(['none', 'low', 'medium', 'high']),
-});
-export type Position = z.infer<typeof PositionSchema>;
-
-export const OrderSchema = z.object({
-  id: z.string(),
-  symbol: z.string(),
-  side: z.enum(['BUY', 'SELL']),
-  type: z.string(),
-  status: z.enum(['filled', 'canceled', 'rejected', 'open']),
-  price: z.number().optional(),
-  amount: z.number(),
-  filledAmount: z.number(),
+export const P2PMarketSnapshotSchema = z.object({
   timestamp: z.string(),
-  rejectReason: z.string().optional(),
-  retCode: z.number().optional(),
+  token: z.string(),
+  fiat: z.string(),
+  paymentMethod: z.string(),
+  bestBuyPrice: z.number(),
+  bestSellPrice: z.number(),
+  spreadAbs: z.number(),
+  spreadPct: z.number(),
+  buyDepthTop5: z.number(),
+  sellDepthTop5: z.number(),
+  depthImbalance: z.number(),
+  volatility1h: z.number(),
+  sampleCount: z.number(),
+  healthFlag: z.enum(['OK', 'DEGRADED', 'CRITICAL']),
 });
-export type Order = z.infer<typeof OrderSchema>;
 
-export const StrategySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  state: z.enum(['running', 'paused', 'error']),
-  heartbeatAge: z.string(),
-  lastSignal: z.string(),
-  consecutiveLosses: z.number(),
+export type P2PMarketSnapshot = z.infer<typeof P2PMarketSnapshotSchema>;
+
+export const P2PSpreadHistorySchema = z.object({
+  bucketStart: z.string(),
+  bucketEnd: z.string(),
+  avgSpreadPct: z.number(),
+  minSpreadPct: z.number(),
+  maxSpreadPct: z.number(),
+  p50SpreadPct: z.number(),
+  p90SpreadPct: z.number(),
+  volatility: z.number(),
+  avgDepthImbalance: z.number(),
+  samples: z.number(),
 });
-export type Strategy = z.infer<typeof StrategySchema>;
 
-export const RiskConfigSchema = z.object({
-  maxRiskPerTrade: z.number(),
-  maxOpenPositions: z.number(),
-  dailyLossLimit: z.number(),
-  circuitBreakerStatus: z.enum(['active', 'tripped']),
-  killSwitchEnabled: z.boolean(),
-});
-export type RiskConfig = z.infer<typeof RiskConfigSchema>;
+export type P2PSpreadHistory = z.infer<typeof P2PSpreadHistorySchema>;
 
-export const TradingIncidentSchema = z.object({
-  id: z.string(),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
-  title: z.string(),
-  firstSeen: z.string(),
-  suggestedAction: z.string(),
-  acknowledged: z.boolean(),
-});
-export type TradingIncident = z.infer<typeof TradingIncidentSchema>;
-
-export const DecisionSchema = z.object({
-  id: z.string(),
-  timestamp: z.string(),
-  strategy: z.string(),
-  action: z.enum(['BUY', 'SELL', 'HOLD', 'CLOSE']),
-  symbol: z.string(),
-  reason: z.string(),
-  confidence: z.number(),
-});
-export type Decision = z.infer<typeof DecisionSchema>;
-
-export const TradingStateSchema = z.object({
-  health: TradingHealthSchema,
-  pnl: PnLSummarySchema,
-  positions: z.array(PositionSchema),
-  orders: z.array(OrderSchema),
-  strategies: z.array(StrategySchema),
-  risk: RiskConfigSchema,
-  incidents: z.array(TradingIncidentSchema),
-  decisions: z.array(DecisionSchema),
-  chartData: z.array(z.object({
-    timestamp: z.string(),
-    pnl: z.number(),
+export const P2PTradingStateSchema = z.object({
+  pair: z.string(),
+  lastSync: z.string(),
+  streamHealth: z.enum(['HEALTHY', 'DEGRADED', 'OFFLINE']),
+  kpis: z.object({
+    spread: z.number(),
+    spreadChange: z.number(),
+    topOfBook: z.number(),
+    volatility: z.number(),
+    liquidityProxy: z.number(),
+  }),
+  snapshots: z.array(P2PMarketSnapshotSchema),
+  history: z.array(P2PSpreadHistorySchema),
+  heatmap: z.array(z.object({
+    hour: z.number(),
+    day: z.string(),
+    opportunityScore: z.number(), // 0-100
   })),
+  alerts: z.array(z.object({
+    id: z.string(),
+    timestamp: z.string(),
+    type: z.enum(['INFO', 'WARNING', 'CRITICAL']),
+    message: z.string(),
+    rule: z.string(),
+  })),
+  health: z.object({
+    latencyP50: z.number(),
+    latencyP95: z.number(),
+    missingSampleRatio: z.number(),
+    lastIngest: z.string(),
+    confidenceScore: z.number(),
+  })
 });
-export type TradingState = z.infer<typeof TradingStateSchema>;
+
+export type P2PTradingState = z.infer<typeof P2PTradingStateSchema>;
+
+export interface TradingHealth {
+  mode: 'LIVE' | 'PAPER' | 'BACKTEST';
+  auth: 'connected' | 'disconnected' | 'error';
+  ws: 'connected' | 'disconnected' | 'reconnecting';
+  orderApi: 'healthy' | 'degraded' | 'offline';
+  lastUpdate: string;
+  isStale: boolean;
+}
+
+export interface PnLSummary {
+  session: number;
+  day: number;
+  week: number;
+  realized: number;
+  unrealized: number;
+  marginUsage: number;
+  totalOpenRisk: number;
+  maxDrawdown: number;
+  drawdownLimit: number;
+}
+
+export interface Position {
+  id: string;
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  size: number;
+  entry: number;
+  mark: number;
+  liq: number;
+  uPnL: number;
+  roe: number;
+  age: string;
+  strategy: string;
+  riskFlag: 'none' | 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface Order {
+  id: string;
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  type: 'LIMIT' | 'MARKET' | 'STOP';
+  status: 'open' | 'filled' | 'canceled' | 'rejected';
+  price?: number;
+  amount: number;
+  filledAmount: number;
+  timestamp: string;
+  rejectReason?: string;
+  retCode?: number;
+}
+
+export interface Strategy {
+  id: string;
+  name: string;
+  state: 'running' | 'paused' | 'error' | 'idle';
+  heartbeatAge: string;
+  lastSignal: string;
+  consecutiveLosses: number;
+}
+
+export interface RiskConfig {
+  maxRiskPerTrade: number;
+  maxOpenPositions: number;
+  dailyLossLimit: number;
+  circuitBreakerStatus: 'active' | 'inactive';
+  killSwitchEnabled: boolean;
+}
+
+export interface TradingIncident {
+  id: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  firstSeen: string;
+  suggestedAction: string;
+  acknowledged: boolean;
+}
+
+export interface Decision {
+  id: string;
+  timestamp: string;
+  strategy: string;
+  action: 'BUY' | 'SELL' | 'HOLD';
+  symbol: string;
+  reason: string;
+  confidence: number;
+}
+
+export interface TradingState {
+  health: TradingHealth;
+  pnl: PnLSummary;
+  positions: Position[];
+  orders: Order[];
+  strategies: Strategy[];
+  risk: RiskConfig;
+  incidents: TradingIncident[];
+  decisions: Decision[];
+  chartData: { timestamp: string; pnl: number }[];
+}

@@ -57,13 +57,13 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-export const IconButton = ({ 
+export const IconButton: React.FC<ButtonProps & { icon: string }> = ({ 
   icon, 
   size = 'md', 
   variant = 'ghost',
   className,
   ...props 
-}: ButtonProps & { icon: string }) => {
+}) => {
   const sizes = {
     xs: 'p-1',
     sm: 'p-1.5',

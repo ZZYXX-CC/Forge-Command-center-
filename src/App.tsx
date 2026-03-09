@@ -21,6 +21,8 @@ import { Messaging } from './pages/Messaging';
 import { Finance } from './pages/Finance';
 import { Incidents } from './pages/Incidents';
 import { Audit } from './pages/Audit';
+import { Settings } from './pages/Settings';
+import { TradingP2P } from './pages/TradingP2P';
 import { ComponentLibrary } from './pages/ComponentLibrary';
 import { cn } from './lib/utils';
 
@@ -116,6 +118,18 @@ function Dashboard() {
         keysPressed = {};
       }
 
+      // g p => p2p trading page
+      if (keysPressed['g'] && keysPressed['p']) {
+        navigate('/trading/p2p');
+        keysPressed = {};
+      }
+
+      // g s => settings page
+      if (keysPressed['g'] && keysPressed['s']) {
+        navigate('/settings');
+        keysPressed = {};
+      }
+
       // g l => library page
       if (keysPressed['g'] && keysPressed['l']) {
         navigate('/library');
@@ -187,6 +201,7 @@ function Dashboard() {
     location.pathname === '/finance' ? 'finance' : 
     location.pathname === '/incidents' ? 'incidents' : 
     location.pathname === '/audit' ? 'audit' : 
+    location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 
     'overview';
 
@@ -236,6 +251,8 @@ function Dashboard() {
             <Route path="/finance" element={<Finance />} />
             <Route path="/incidents" element={<Incidents />} />
             <Route path="/audit" element={<Audit />} />
+            <Route path="/trading/p2p" element={<TradingP2P />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/library" element={<ComponentLibrary />} />
           </Routes>
 

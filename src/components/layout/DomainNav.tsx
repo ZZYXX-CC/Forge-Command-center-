@@ -101,8 +101,19 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
           <span className="text-label-sm">Palette</span>
         </div>
         
-        <button className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors">
-          <Settings className="w-4 h-4" />
+        <button 
+          onClick={() => handleNav('/settings')}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all group",
+            activeId === 'settings' 
+              ? "bg-surface-overlay border-l-2 border-accent-primary text-text-primary" 
+              : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          )}
+        >
+          <Settings className={cn(
+            "w-4 h-4 transition-colors",
+            activeId === 'settings' ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
+          )} />
           <span className="text-heading-sm">Settings</span>
         </button>
       </div>

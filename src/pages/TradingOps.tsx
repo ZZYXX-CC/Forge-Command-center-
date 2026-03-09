@@ -19,9 +19,11 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { cn } from '@/src/lib/utils';
-import { TrendingUp, TrendingDown, Clock, Maximize2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Maximize2, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const TradingOps: React.FC = () => {
+  const navigate = useNavigate();
   const { data, isLoading, error } = useQuery<TradingState>({
     queryKey: ['trading-state'],
     queryFn: async () => {
@@ -76,6 +78,13 @@ export const TradingOps: React.FC = () => {
               <button className="px-2 py-0.5 rounded hover:bg-surface-hover text-[10px] font-bold text-text-muted">1D</button>
               <button className="px-2 py-0.5 rounded hover:bg-surface-hover text-[10px] font-bold text-text-muted">1W</button>
             </div>
+            <button 
+              onClick={() => navigate('/trading/p2p')}
+              className="ml-4 flex items-center gap-2 px-3 py-1 rounded bg-accent-subtle text-accent-primary border border-accent-primary/20 hover:bg-accent-subtle/80 transition-all"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span className="text-label-sm font-bold">P2P MONITORING</span>
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
