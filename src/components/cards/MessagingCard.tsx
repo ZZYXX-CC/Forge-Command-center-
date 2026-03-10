@@ -2,12 +2,14 @@ import React from 'react';
 import { StatusCard } from './StatusCard';
 import { OverviewState } from '@/src/types';
 import { cn } from '@/src/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface MessagingCardProps {
   data: OverviewState;
 }
 
 export const MessagingCard: React.FC<MessagingCardProps> = ({ data }) => {
+  const navigate = useNavigate();
   const summary = data.messagingSummary;
 
   return (
@@ -17,6 +19,7 @@ export const MessagingCard: React.FC<MessagingCardProps> = ({ data }) => {
       status={summary.dlqCount > 0 ? 'degraded' : 'healthy'}
       timestamp={data.meta.generatedAt}
       footerAction="View queues →"
+      onFooterActionClick={() => navigate('/messaging')}
     >
       <div className="space-y-6 py-2">
         <div className="flex justify-between items-end">

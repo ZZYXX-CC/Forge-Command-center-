@@ -11,6 +11,7 @@ interface StatusCardProps {
   timestamp: string;
   children: React.ReactNode;
   footerAction?: React.ReactNode;
+  onFooterActionClick?: () => void;
   className?: string;
   isLoading?: boolean;
   error?: string;
@@ -27,6 +28,7 @@ export const StatusCard: React.FC<StatusCardProps> = ({
   timestamp,
   children,
   footerAction,
+  onFooterActionClick,
   className,
   isLoading,
   error,
@@ -112,7 +114,10 @@ export const StatusCard: React.FC<StatusCardProps> = ({
       <div className="p-4 pt-2 mt-auto border-t border-surface-border flex justify-between items-center">
         <FreshnessIndicator timestamp={timestamp} className={isStale ? "text-status-degraded" : ""} />
         {footerAction && (
-          <div className="text-accent-primary hover:text-accent-dim transition-colors cursor-pointer text-label-sm font-bold">
+          <div 
+            onClick={onFooterActionClick}
+            className="text-accent-primary hover:text-accent-dim transition-colors cursor-pointer text-label-sm font-bold"
+          >
             {footerAction}
           </div>
         )}

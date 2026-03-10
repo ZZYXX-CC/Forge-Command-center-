@@ -82,6 +82,18 @@ const OverviewStateSchema = z.object({
     overdueCount: z.number(),
     completedToday: z.number(),
   }),
+  tasks: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().optional(),
+    status: z.enum(['todo', 'in-progress', 'completed']),
+    priority: ActionPriority,
+    domain: z.string(),
+    createdAt: z.string(),
+    dueAt: z.string().optional(),
+    linkedAlertId: z.string().optional(),
+    linkedActionId: z.string().optional(),
+  })),
   recentChanges: z.array(z.object({
     id: z.string(),
     occurredAt: z.string(),
@@ -187,6 +199,13 @@ const generateMockData = (): OverviewState => {
       overdueCount: 2,
       completedToday: 15,
     },
+    tasks: [
+      { id: 'tsk-1', title: 'Acknowledge trading alert', status: 'todo', priority: 'urgent', domain: 'Trading', createdAt: new Date(Date.now() - 120000).toISOString(), linkedAlertId: 'alt-1', linkedActionId: 'act-1' },
+      { id: 'tsk-2', title: 'Review failed deployment', status: 'in-progress', priority: 'high', domain: 'Web', createdAt: new Date(Date.now() - 900000).toISOString(), linkedActionId: 'act-2' },
+      { id: 'tsk-3', title: 'Check DLQ — 43 messages', status: 'todo', priority: 'medium', domain: 'Messaging', createdAt: new Date(Date.now() - 3600000).toISOString(), linkedActionId: 'act-3' },
+      { id: 'tsk-4', title: 'Rotate API keys', status: 'todo', priority: 'low', domain: 'Finance', createdAt: now, dueAt: now, linkedActionId: 'act-4' },
+      { id: 'tsk-5', title: 'Review audit log flagged item', status: 'completed', priority: 'info', domain: 'Audit', createdAt: new Date(Date.now() - 10800000).toISOString(), linkedActionId: 'act-5' },
+    ],
     recentChanges: [
       { id: 'chg-1', occurredAt: new Date(Date.now() - 600000).toISOString(), type: 'incident_open', description: 'Order routing failure detected', actor: 'system', domain: 'trading' },
       { id: 'chg-2', occurredAt: new Date(Date.now() - 1800000).toISOString(), type: 'deployment', description: 'auth-api v2.4.1 deployed', actor: 'a.chen', domain: 'deployments' },
@@ -215,6 +234,13 @@ async function startServer() {
 
   app.get("/api/overview-state", (req, res) => {
     res.json(generateMockData());
+  });
+
+  app.post("/api/tasks/:id/status", express.json(), (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    console.log(`Task ${id} status updated to ${status}`);
+    res.json({ success: true, id, status });
   });
 
   app.get("/api/web-ops-state", (req, res) => {
@@ -342,10 +368,30 @@ async function startServer() {
   });
 
   app.get("/api/trading-state", (req, res) => {
+    const timeframe = (req.query.timeframe as string) || '1H';
     const now = new Date().toISOString();
-    const chartData = Array.from({ length: 24 }, (_, i) => ({
-      timestamp: new Date(Date.now() - (23 - i) * 3600000).toISOString(),
-      pnl: Math.sin(i / 3) * 5000 + (i * 200) - 2000,
+    
+    let length = 24;
+    let interval = 3600000; // 1 hour
+    
+    if (timeframe === '4H') {
+      length = 48;
+      interval = 300000; // 5 mins
+    } else if (timeframe === '1D') {
+      length = 24;
+      interval = 3600000; // 1 hour
+    } else if (timeframe === '1W') {
+      length = 168;
+      interval = 3600000; // 1 hour
+    } else {
+      // Default 1H
+      length = 60;
+      interval = 60000; // 1 min
+    }
+
+    const chartData = Array.from({ length }, (_, i) => ({
+      timestamp: new Date(Date.now() - (length - 1 - i) * interval).toISOString(),
+      pnl: Math.sin(i / (length / 8)) * 5000 + (i * (10000 / length)) - 2000 + (Math.random() * 500),
     }));
 
     res.json({
@@ -405,9 +451,27 @@ async function startServer() {
   });
 
   app.get('/api/p2p-trading-state', (req, res) => {
+    const timeRange = (req.query.timeRange as string) || '24h';
+    const token = (req.query.token as string) || 'USDT';
+    const fiat = (req.query.fiat as string) || 'NGN';
     const now = new Date();
+    
+    let historyLength = 24;
+    let historyInterval = 3600000; // 1 hour
+    
+    if (timeRange === '1h') {
+      historyLength = 60;
+      historyInterval = 60000; // 1 min
+    } else if (timeRange === '6h') {
+      historyLength = 72;
+      historyInterval = 300000; // 5 mins
+    } else if (timeRange === '72h') {
+      historyLength = 72;
+      historyInterval = 3600000; // 1 hour
+    }
+
     const p2pState = {
-      pair: "USDT/NGN",
+      pair: `${token}/${fiat}`,
       lastSync: now.toISOString(),
       streamHealth: "HEALTHY",
       kpis: {
@@ -433,9 +497,9 @@ async function startServer() {
         sampleCount: 120,
         healthFlag: "OK",
       })),
-      history: Array.from({ length: 24 }).map((_, i) => ({
-        bucketStart: new Date(now.getTime() - (i + 1) * 3600000).toISOString(),
-        bucketEnd: new Date(now.getTime() - i * 3600000).toISOString(),
+      history: Array.from({ length: historyLength }).map((_, i) => ({
+        bucketStart: new Date(now.getTime() - (i + 1) * historyInterval).toISOString(),
+        bucketEnd: new Date(now.getTime() - i * historyInterval).toISOString(),
         avgSpreadPct: 2.5 + Math.random() * 0.5,
         minSpreadPct: 2.1 + Math.random() * 0.2,
         maxSpreadPct: 3.2 + Math.random() * 0.3,

@@ -1,121 +1,285 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ============================================================
+   FORGE × NUVUE — Muted Emerald Design System v2.0
+   OpenClaw Operations Command Center
+   Replace src/index.css with this file in full.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+:root {
+  --emerald-accent: #5fb87a;
+  --emerald-mid:    #3d9960;
+  --emerald-subtle: #1e4d32;
+}
+
 @theme {
-  /* Surfaces */
-  --color-surface-base: #0d0e11;
-  --color-surface-raised: #13151a;
-  --color-surface-overlay: #1a1d24;
-  --color-surface-border: #252830;
-  --color-surface-hover: #1f2229;
-  --color-surface-active: #232730;
 
-  /* Text */
-  --color-text-primary: #e8eaf0;
-  --color-text-secondary: #8b90a0;
-  --color-text-muted: #4a4f60;
-  --color-text-inverse: #0d0e11;
-  --color-text-mono: #a0c4ff;
+  /* ── SURFACES ─────────────────────────────────────────────
+     Deep off-black with green undertone throughout.
+     Every surface carries the organic warmth — nothing is
+     pure neutral gray.
+  ──────────────────────────────────────────────────────── */
+  --color-surface-base:    #0c0f0d;   /* Page background */
+  --color-surface-raised:  #111410;   /* Card backgrounds */
+  --color-surface-overlay: #161b14;   /* Panels, drawers, dropdowns */
+  --color-surface-border:  #1f2a1e;   /* Dividers, card borders */
+  --color-surface-hover:   #1a2119;   /* Hover state backgrounds */
+  --color-surface-active:  #1e2720;   /* Pressed / selected backgrounds */
 
-  /* Status */
-  --color-status-healthy: #22c55e;
-  --color-status-degraded: #f59e0b;
-  --color-status-incident: #ef4444;
-  --color-status-info: #3b82f6;
-  --color-status-neutral: #6b7280;
+  /* ── TEXT ─────────────────────────────────────────────────
+     Warm off-white — never pure #ffffff.
+     The warmth sits naturally on the green-undertone dark base.
+  ──────────────────────────────────────────────────────── */
+  --color-text-primary:    #e8e6e1;   /* Body, card values, primary content */
+  --color-text-secondary:  #9a9890;   /* Labels, metadata, sub-headings */
+  --color-text-muted:      #4d4f4a;   /* Disabled, ghost states, placeholders */
+  --color-text-inverse:    #0c0f0d;   /* Text on light/accent backgrounds */
+  --color-text-mono:       #7ec99a;   /* Monospace values: IDs, timestamps, PnL */
 
-  /* Status backgrounds */
-  --color-status-healthy-bg: rgba(34, 197, 94, 0.08);
-  --color-status-degraded-bg: rgba(245, 158, 11, 0.08);
-  --color-status-incident-bg: rgba(239, 68, 68, 0.08);
-  --color-status-info-bg: rgba(59, 130, 246, 0.08);
-  --color-status-neutral-bg: rgba(107, 114, 128, 0.08);
+  /* ── EMERALD THREE-TIER ACCENT ────────────────────────────
+     The core of the NUVUE system.
+     Never interchange tiers — each has a locked role.
+  ──────────────────────────────────────────────────────── */
+  --color-emerald-accent:  #5fb87a;   /* T1: Primary interactive, CTA, focus rings */
+  --color-emerald-mid:     #3d9960;   /* T2: Hover, pressed, depth states */
+  --color-emerald-subtle:  #1e4d32;   /* T3: Background washes, selected fills */
 
-  /* Accents */
-  --color-accent-primary: #4f8ef7;
-  --color-accent-dim: #2563eb;
-  --color-accent-subtle: rgba(79, 142, 247, 0.12);
+  /* Emerald background tints */
+  --color-emerald-accent-bg: rgba(95, 184, 122, 0.08);
+  --color-emerald-mid-bg:    rgba(61, 153, 96,  0.10);
+  --color-emerald-subtle-bg: rgba(30, 77,  50,  0.20);
 
-  /* Fonts */
+  /* ── STATUS COLORS ────────────────────────────────────────
+     STRICT signal use only. Never decorative.
+     Tuned to harmonize with the muted emerald palette —
+     warmer and more desaturated than standard alert colors.
+
+     Healthy maps directly to --emerald-accent.
+     On a green-undertone base: green = alive at an
+     instinctual level before the operator reads the label.
+  ──────────────────────────────────────────────────────── */
+  --color-status-healthy:  #5fb87a;   /* = emerald-accent — operational */
+  --color-status-degraded: #d4a847;   /* Warm amber — warning, approaching limit */
+  --color-status-incident: #c95f5f;   /* Clay red — incident, critical, breached */
+  --color-status-info:     #5b8fd4;   /* Steel blue — live, informational */
+  --color-status-neutral:  #5e6360;   /* Warm dark gray — unknown, offline */
+
+  /* Status background tints (8% opacity) */
+  --color-status-healthy-bg:  rgba(95,  184, 122, 0.08);
+  --color-status-degraded-bg: rgba(212, 168, 71,  0.08);
+  --color-status-incident-bg: rgba(201, 95,  95,  0.08);
+  --color-status-info-bg:     rgba(91,  143, 212, 0.08);
+  --color-status-neutral-bg:  rgba(94,  99,  96,  0.08);
+
+  /* ── ACCENT (interactive) ─────────────────────────────────
+     Maps to emerald tiers for consistency.
+  ──────────────────────────────────────────────────────── */
+  --color-accent-primary: #5fb87a;                    /* = emerald-accent */
+  --color-accent-dim:     #3d9960;                    /* = emerald-mid */
+  --color-accent-subtle:  rgba(95, 184, 122, 0.12);   /* Hover fills */
+
+  /* ── FONTS ────────────────────────────────────────────────
+     DM Sans for all UI copy.
+     JetBrains Mono for all data: IDs, timestamps, PnL,
+     metrics, codes, logs, version strings.
+     Never use sans-serif for data values.
+  ──────────────────────────────────────────────────────── */
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Spacing */
-  --spacing-space-1: 0.25rem;
-  --spacing-space-2: 0.5rem;
-  --spacing-space-3: 0.75rem;
-  --spacing-space-4: 1rem;
-  --spacing-space-5: 1.25rem;
-  --spacing-space-6: 1.5rem;
-  --spacing-space-8: 2rem;
-  --spacing-space-10: 2.5rem;
-  --spacing-space-12: 3rem;
+  /* ── SPACING (4px base grid) ──────────────────────────────*/
+  --spacing-space-1:  0.25rem;   /*  4px */
+  --spacing-space-2:  0.5rem;    /*  8px */
+  --spacing-space-3:  0.75rem;   /* 12px */
+  --spacing-space-4:  1rem;      /* 16px */
+  --spacing-space-5:  1.25rem;   /* 20px */
+  --spacing-space-6:  1.5rem;    /* 24px */
+  --spacing-space-8:  2rem;      /* 32px */
+  --spacing-space-10: 2.5rem;    /* 40px */
+  --spacing-space-12: 3rem;      /* 48px */
 
-  /* Radius */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  /* ── BORDER RADIUS ────────────────────────────────────────*/
+  --radius-sm:   3px;      /* Badges, chips, micro tags */
+  --radius-md:   6px;      /* Cards, inputs, buttons */
+  --radius-lg:   10px;     /* Modals, large panels */
+  --radius-full: 9999px;   /* Pills */
 
-  /* Shadows */
-  --shadow-card: 0 0 0 1px var(--color-surface-border);
-  --shadow-focus: 0 0 0 2px var(--color-accent-primary);
-  --shadow-hover: 0 0 0 1px rgba(79, 142, 247, 0.4);
-  --shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.4);
+  /* ── ELEVATION / SHADOWS ──────────────────────────────────
+     FORGE uses border-based depth, not heavy drop shadows.
+     Emerald glow on hover/focus — not blue.
+  ──────────────────────────────────────────────────────── */
+  --shadow-card:   0 0 0 1px var(--color-surface-border);
+  --shadow-focus:  0 0 0 2px var(--color-emerald-accent);
+  --shadow-hover:  0 0 0 1px rgba(95, 184, 122, 0.35);
+  --shadow-raised: 0 4px 20px rgba(0, 0, 0, 0.5);
+
 }
 
+/* ── BASE LAYER ───────────────────────────────────────────────*/
 @layer base {
   body {
     @apply bg-surface-base text-text-primary font-sans antialiased;
   }
 
-  /* FORGE Typography Styles */
+  /* Scrollbar — emerald tinted */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface-base);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-emerald-subtle);
+  }
+
+  /* Focus ring — emerald, not blue */
+  *:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* ── TYPOGRAPHY SCALE ──────────────────────────────────────
+     Named styles applied as Tailwind classes.
+     Use these — never write raw font-size inline.
+  ──────────────────────────────────────────────────────── */
+
+  /* Display — hero values, top-level KPIs */
   .text-display-xl {
     @apply text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-text-primary;
   }
-
   .text-display-lg {
     @apply text-[1.5rem] font-bold leading-[1.2] tracking-[-0.015em] text-text-primary;
   }
+  .text-display-md {
+    @apply text-[1.25rem] font-bold leading-[1.2] tracking-[-0.01em] text-text-primary;
+  }
 
+  /* Heading — card titles, section headers */
   .text-heading-md {
     @apply text-[1rem] font-semibold leading-[1.4] tracking-[-0.01em] text-text-primary;
   }
-
   .text-heading-sm {
     @apply text-[0.875rem] font-semibold leading-[1.4] tracking-[0] text-text-primary;
   }
 
+  /* Body — card content, descriptions */
   .text-body-md {
     @apply text-[0.875rem] font-normal leading-[1.6] tracking-[0] text-text-primary;
   }
-
   .text-body-sm {
     @apply text-[0.75rem] font-normal leading-[1.5] tracking-[0] text-text-secondary;
   }
 
+  /* Label — section labels, micro-headers (always uppercase) */
   .text-label-md {
     @apply text-[0.75rem] font-semibold leading-[1.4] tracking-[0.08em] uppercase text-text-secondary;
   }
-
   .text-label-sm {
     @apply text-[0.625rem] font-semibold leading-[1.4] tracking-[0.1em] uppercase text-text-muted;
   }
-
-  .text-mono-md {
-    @apply font-mono text-[0.875rem] font-normal leading-[1.5] tracking-[0] text-text-mono;
+  .text-label-xs {
+    @apply text-[0.5625rem] font-semibold leading-[1.4] tracking-[0.1em] uppercase text-text-muted;
   }
 
-  .text-mono-sm {
-    @apply font-mono text-[0.75rem] font-normal leading-[1.5] tracking-[0] text-text-mono;
-  }
-
+  /* Mono — all numeric, technical, system values */
   .text-mono-lg {
     @apply font-mono text-[1.125rem] font-semibold leading-[1.3] tracking-[-0.01em] text-text-primary;
   }
+  .text-mono-md {
+    @apply font-mono text-[0.875rem] font-normal leading-[1.5] tracking-[0] text-text-mono;
+  }
+  .text-mono-sm {
+    @apply font-mono text-[0.75rem] font-normal leading-[1.5] tracking-[0] text-text-mono;
+  }
+  .text-mono-xs {
+    @apply font-mono text-[0.625rem] font-normal leading-[1.5] tracking-[0] text-text-mono;
+  }
+
 }
 
+/* ── COMPONENT LAYER ──────────────────────────────────────────*/
 @layer components {
+
+  /* Skeleton shimmer — emerald-tinted pulse */
   .skeleton {
-    @apply bg-surface-overlay animate-pulse opacity-60;
+    @apply bg-surface-overlay animate-pulse opacity-60 rounded-sm;
   }
+
+  /* Status left-border variants for cards */
+  .card-incident {
+    border-left: 2px solid var(--color-status-incident);
+  }
+  .card-degraded {
+    border-left: 2px solid var(--color-status-degraded);
+  }
+  .card-healthy {
+    border-left: 2px solid var(--color-status-healthy);
+  }
+  .card-info {
+    border-left: 2px solid var(--color-status-info);
+  }
+
+  /* Stale data overlay */
+  .stale-indicator {
+    border-left: 2px solid var(--color-status-degraded);
+  }
+
+  /* Emerald hover glow on interactive cards */
+  .card-hoverable:hover {
+    box-shadow: var(--shadow-hover);
+    transition: box-shadow 0.2s ease;
+  }
+
+  /* Active nav item */
+  .nav-active {
+    border-left: 2px solid var(--color-emerald-accent);
+    background-color: var(--color-surface-active);
+  }
+
+  /* Pulsing live dot */
+  .pulse-live {
+    animation: pulse-emerald 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-emerald {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(95, 184, 122, 0.4); }
+    50%       { opacity: 0.8; box-shadow: 0 0 0 6px rgba(95, 184, 122, 0); }
+  }
+
+  /* Skeleton shimmer animation */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-overlay) 25%,
+      var(--color-surface-hover) 50%,
+      var(--color-surface-overlay) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Command palette backdrop blur */
+  .palette-backdrop {
+    background: rgba(12, 15, 13, 0.80);
+    backdrop-filter: blur(4px);
+  }
+
 }
+
+/* ── UTILITY OVERRIDES ────────────────────────────────────────
+   Remove hardcoded colors that crept in.
+   Any component using bg-[#...] raw hex should be updated
+   to use token classes instead.
+   Flag: grep -r "bg-\[#" src/ to find violations.
+──────────────────────────────────────────────────────────── */

@@ -12,6 +12,19 @@ export type OperationalMode = z.infer<typeof OperationalModeSchema>;
 export const ActionPrioritySchema = z.enum(['urgent', 'high', 'medium', 'low', 'info']);
 export type ActionPriority = z.infer<typeof ActionPrioritySchema>;
 
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in-progress' | 'completed';
+  priority: ActionPriority;
+  domain: string;
+  createdAt: string;
+  dueAt?: string;
+  linkedAlertId?: string;
+  linkedActionId?: string;
+}
+
 export interface OverviewState {
   meta: {
     generatedAt: string;
@@ -85,6 +98,7 @@ export interface OverviewState {
     overdueCount: number;
     completedToday: number;
   };
+  tasks: Task[];
   recentChanges: Array<{
     id: string;
     occurredAt: string;

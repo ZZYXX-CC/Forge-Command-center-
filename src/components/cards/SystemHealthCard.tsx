@@ -11,13 +11,15 @@ import {
   FileText 
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface SystemHealthCardProps {
   data: OverviewState;
 }
 
 export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ data }) => {
+  const navigate = useNavigate();
+  
   const icons = {
     trading: TrendingUp,
     web: Globe,
@@ -28,6 +30,19 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ data }) => {
     audit: FileText,
   };
 
+  const handleDomainClick = (id: string) => {
+    const pathMap: Record<string, string> = {
+      trading: '/trading',
+      web: '/web-ops',
+      deployments: '/deployments',
+      messaging: '/messaging',
+      finance: '/finance',
+      incidents: '/incidents',
+      audit: '/audit',
+    };
+    navigate(pathMap[id] || '/');
+  };
+
   return (
     <StatusCard
       label="SYSTEM HEALTH"
@@ -35,6 +50,7 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ data }) => {
       status={data.globalStatus}
       timestamp={data.meta.generatedAt}
       footerAction="View sub-services →"
+      onFooterActionClick={() => navigate('/incidents')}
     >
       <div className="grid grid-cols-1 gap-1 py-2">
         {data.domains.map((domain) => {
@@ -50,6 +66,7 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ data }) => {
           return (
             <div 
               key={domain.id}
+              onClick={() => handleDomainClick(domain.id)}
               className="flex items-center gap-3 p-2 rounded-md hover:bg-surface-hover cursor-pointer transition-colors group"
             >
               <Icon className="w-4 h-4 text-text-muted group-hover:text-text-secondary" />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TradingState } from '@/src/types/trading';
 import { ExecutionHealthBar } from '@/src/components/trading/ExecutionHealthBar';
@@ -19,15 +19,29 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { cn } from '@/src/lib/utils';
-import { TrendingUp, TrendingDown, Clock, Maximize2, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Maximize2, Minimize2, Zap, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const TradingOps: React.FC = () => {
   const navigate = useNavigate();
+  const [isChartFullscreen, setIsChartFullscreen] = useState(false);
+  const [timeframe, setTimeframe] = useState('1H');
+
+  useEffect(() => {
+    if (isChartFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isChartFullscreen]);
+
   const { data, isLoading, error } = useQuery<TradingState>({
-    queryKey: ['trading-state'],
+    queryKey: ['trading-state', timeframe],
     queryFn: async () => {
-      const res = await fetch('/api/trading-state');
+      const res = await fetch(`/api/trading-state?timeframe=${timeframe}`);
       if (!res.ok) throw new Error('Failed to fetch trading state');
       return res.json();
     },
@@ -68,36 +82,54 @@ export const TradingOps: React.FC = () => {
       <ExecutionHealthBar health={data.health} />
 
       {/* Historical PnL Chart */}
-      <div className="bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Performance History</span>
-            <div className="flex items-center gap-2">
-              <button className="px-2 py-0.5 rounded bg-surface-overlay text-[10px] font-bold text-accent-primary border border-accent-primary/30">1H</button>
-              <button className="px-2 py-0.5 rounded hover:bg-surface-hover text-[10px] font-bold text-text-muted">4H</button>
-              <button className="px-2 py-0.5 rounded hover:bg-surface-hover text-[10px] font-bold text-text-muted">1D</button>
-              <button className="px-2 py-0.5 rounded hover:bg-surface-hover text-[10px] font-bold text-text-muted">1W</button>
+      <div className={cn(
+        "bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-4 transition-all duration-300",
+        isChartFullscreen ? "fixed inset-0 z-[100] rounded-none p-8 bg-surface-base" : "relative"
+      )}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="text-label-sm font-bold text-text-primary uppercase tracking-wider whitespace-nowrap">Performance History</span>
+            <div className="flex items-center gap-1.5">
+              {['1H', '4H', '1D', '1W'].map((tf) => (
+                <button 
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                    timeframe === tf 
+                      ? "bg-surface-overlay text-accent-primary border border-accent-primary/30" 
+                      : "hover:bg-surface-hover text-text-muted"
+                  )}
+                >
+                  {tf}
+                </button>
+              ))}
             </div>
-            <button 
-              onClick={() => navigate('/trading/p2p')}
-              className="ml-4 flex items-center gap-2 px-3 py-1 rounded bg-accent-subtle text-accent-primary border border-accent-primary/20 hover:bg-accent-subtle/80 transition-all"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="text-label-sm font-bold">P2P MONITORING</span>
-            </button>
+            {!isChartFullscreen && (
+              <button 
+                onClick={() => navigate('/trading/p2p')}
+                className="flex items-center gap-2 px-3 py-1 rounded bg-accent-subtle text-accent-primary border border-accent-primary/20 hover:bg-accent-subtle/80 transition-all"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span className="text-label-sm font-bold">P2P MONITORING</span>
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-surface-border sm:border-none pt-3 sm:pt-0">
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-text-muted" />
               <span className="text-mono-sm text-text-secondary">LIVE FEED</span>
             </div>
-            <button className="p-1 text-text-muted hover:text-text-primary">
-              <Maximize2 className="w-4 h-4" />
+            <button 
+              onClick={() => setIsChartFullscreen(!isChartFullscreen)}
+              className="p-1 text-text-muted hover:text-text-primary transition-colors"
+            >
+              {isChartFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        <div className="h-[200px] w-full">
+        <div className={cn("w-full transition-all duration-300", isChartFullscreen ? "flex-1" : "h-[200px]")}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data.chartData}>
               <defs>

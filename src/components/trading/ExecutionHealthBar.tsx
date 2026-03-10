@@ -16,7 +16,7 @@ export const ExecutionHealthBar: React.FC<ExecutionHealthBarProps> = ({ health }
   };
 
   return (
-    <div className="bg-surface-raised border border-surface-border rounded-lg p-3 flex flex-wrap items-center gap-6">
+    <div className="bg-surface-raised border border-surface-border rounded-lg p-3 flex flex-wrap items-center gap-y-4 gap-x-6">
       <div className="flex items-center gap-3">
         <div className="flex flex-col">
           <span className="text-[10px] text-text-muted uppercase font-bold">Exchange</span>
@@ -29,10 +29,10 @@ export const ExecutionHealthBar: React.FC<ExecutionHealthBarProps> = ({ health }
         )}>
           {health.mode}
         </div>
-        <div className="h-8 w-px bg-surface-border" />
+        <div className="h-8 w-px bg-surface-border hidden sm:block" />
       </div>
 
-      <div className="flex items-center gap-6 flex-1 min-w-[300px]">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <ShieldCheck className={cn("w-4 h-4", statusColors[health.auth])} />
           <span className="text-label-sm text-text-muted uppercase">Auth</span>
@@ -52,7 +52,7 @@ export const ExecutionHealthBar: React.FC<ExecutionHealthBarProps> = ({ health }
         </div>
       </div>
 
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="flex items-center gap-4 ml-auto sm:ml-0">
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-text-muted" />
           <span className="text-mono-sm text-text-secondary">

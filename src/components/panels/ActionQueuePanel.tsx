@@ -2,6 +2,8 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { OverviewState, ActionPriority } from '@/src/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '../primitives/Toast';
+import { useNavigate } from 'react-router-dom';
 
 interface ActionQueuePanelProps {
   data: OverviewState;
@@ -9,6 +11,17 @@ interface ActionQueuePanelProps {
 
 export const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ data }) => {
   const actions = data.recommendedActions;
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+
+  const handleExecuteAction = (actionDescription: string, domain: string) => {
+    showToast(`Executing: ${actionDescription}`, 'info');
+    
+    // Optional navigation based on domain
+    if (domain.toLowerCase().includes('trading')) navigate('/trading');
+    else if (domain.toLowerCase().includes('web')) navigate('/web-ops');
+    else if (domain.toLowerCase().includes('deploy')) navigate('/deployments');
+  };
 
   const priorityColors = {
     urgent: 'bg-status-incident text-text-inverse',
@@ -31,6 +44,7 @@ export const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ data }) => {
         {actions.map((action, idx) => (
           <div 
             key={action.id}
+            onClick={() => handleExecuteAction(action.description, action.domain)}
             className="flex items-center gap-3 p-2 rounded-md hover:bg-surface-hover cursor-pointer transition-colors group"
           >
             <div className="text-mono-sm text-text-muted w-4">{idx + 1}</div>

@@ -3,12 +3,14 @@ import { StatusCard } from './StatusCard';
 import { OverviewState } from '@/src/types';
 import { ModeChip } from '../primitives/ModeChip';
 import { cn } from '@/src/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface TradingSnapshotCardProps {
   data: OverviewState;
 }
 
 export const TradingSnapshotCard: React.FC<TradingSnapshotCardProps> = ({ data }) => {
+  const navigate = useNavigate();
   const summary = data.tradingSummary;
   const isPositive = summary.aggregatePnl >= 0;
 
@@ -19,6 +21,7 @@ export const TradingSnapshotCard: React.FC<TradingSnapshotCardProps> = ({ data }
       status={summary.riskStatus === 'breached' ? 'incident' : summary.riskStatus === 'approaching' ? 'degraded' : 'healthy'}
       timestamp={data.meta.generatedAt}
       footerAction="View strategies →"
+      onFooterActionClick={() => navigate('/trading')}
     >
       <div className="space-y-6 py-2">
         <div className="flex justify-between items-center">

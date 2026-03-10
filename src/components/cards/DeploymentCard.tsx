@@ -3,12 +3,14 @@ import { StatusCard } from './StatusCard';
 import { OverviewState } from '@/src/types';
 import { cn } from '@/src/lib/utils';
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface DeploymentCardProps {
   data: OverviewState;
 }
 
 export const DeploymentCard: React.FC<DeploymentCardProps> = ({ data }) => {
+  const navigate = useNavigate();
   const summary = data.deploymentSummary;
 
   return (
@@ -18,6 +20,7 @@ export const DeploymentCard: React.FC<DeploymentCardProps> = ({ data }) => {
       status={summary.failedLast24H > 0 ? 'degraded' : 'healthy'}
       timestamp={data.meta.generatedAt}
       footerAction="View pipeline →"
+      onFooterActionClick={() => navigate('/deployments')}
     >
       <div className="space-y-4 py-2">
         <div className="flex gap-4">

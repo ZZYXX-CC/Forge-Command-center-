@@ -70,7 +70,7 @@ export const TradingP2P: React.FC = () => {
   const { data, isLoading, error, refetch } = useQuery<P2PTradingState>({
     queryKey: ['p2p-trading-state', timeRange, token, fiat],
     queryFn: async () => {
-      const res = await fetch('/api/p2p-trading-state');
+      const res = await fetch(`/api/p2p-trading-state?timeRange=${timeRange}&token=${token}&fiat=${fiat}`);
       if (!res.ok) throw new Error('Failed to fetch P2P trading state');
       return res.json();
     },

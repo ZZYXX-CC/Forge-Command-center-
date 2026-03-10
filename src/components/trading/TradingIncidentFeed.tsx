@@ -3,12 +3,24 @@ import { cn } from '@/src/lib/utils';
 import { TradingIncident } from '@/src/types/trading';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { useToast } from '../primitives/Toast';
+import { useNavigate } from 'react-router-dom';
 
 interface TradingIncidentFeedProps {
   incidents: TradingIncident[];
 }
 
 export const TradingIncidentFeed: React.FC<TradingIncidentFeedProps> = ({ incidents }) => {
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+
+  const handleAcknowledge = (title: string) => {
+    showToast(`Incident Acknowledged: ${title}`, 'success');
+  };
+
+  const handleInvestigate = (id: string) => {
+    navigate('/trading/p2p'); // Navigate to relevant trading subpage
+  };
   if (incidents.length === 0) {
     return (
       <div className="bg-surface-raised border border-surface-border rounded-lg p-6 text-center">
@@ -56,14 +68,22 @@ export const TradingIncidentFeed: React.FC<TradingIncidentFeedProps> = ({ incide
 
             <div className="flex items-center gap-2 mt-1">
               {!incident.acknowledged ? (
-                <button className="px-2 py-1 rounded bg-surface-overlay border border-surface-border text-[10px] font-bold hover:bg-surface-hover">ACKNOWLEDGE</button>
+                <button 
+                  onClick={() => handleAcknowledge(incident.title)}
+                  className="px-2 py-1 rounded bg-surface-overlay border border-surface-border text-[10px] font-bold hover:bg-surface-hover transition-colors"
+                >
+                  ACKNOWLEDGE
+                </button>
               ) : (
                 <div className="flex items-center gap-1 text-[10px] text-status-healthy font-bold">
                   <CheckCircle2 className="w-3 h-3" />
                   ACKNOWLEDGED
                 </div>
               )}
-              <button className="px-2 py-1 rounded bg-accent-primary text-text-inverse text-[10px] font-bold hover:bg-accent-dim flex items-center gap-1">
+              <button 
+                onClick={() => handleInvestigate(incident.id)}
+                className="px-2 py-1 rounded bg-accent-primary text-text-inverse text-[10px] font-bold hover:bg-accent-dim flex items-center gap-1 transition-colors"
+              >
                 INVESTIGATE <ChevronRight className="w-3 h-3" />
               </button>
             </div>

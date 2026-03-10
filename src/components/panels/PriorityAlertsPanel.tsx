@@ -3,6 +3,8 @@ import { cn } from '@/src/lib/utils';
 import { OverviewState, Severity } from '@/src/types';
 import { AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '../primitives/Toast';
+import { useNavigate } from 'react-router-dom';
 
 interface PriorityAlertsPanelProps {
   data: OverviewState;
@@ -10,6 +12,21 @@ interface PriorityAlertsPanelProps {
 
 export const PriorityAlertsPanel: React.FC<PriorityAlertsPanelProps> = ({ data }) => {
   const alerts = data.priorityAlerts;
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+
+  const handleAcknowledge = (e: React.MouseEvent, alertTitle: string) => {
+    e.stopPropagation();
+    showToast(`Acknowledged: ${alertTitle}`, 'success');
+  };
+
+  const handleView = (alertSystem: string) => {
+    const domain = alertSystem.toLowerCase();
+    if (domain.includes('trading')) navigate('/trading');
+    else if (domain.includes('web') || domain.includes('latency')) navigate('/web-ops');
+    else if (domain.includes('deploy')) navigate('/deployments');
+    else navigate('/');
+  };
 
   const severityColors = {
     critical: 'text-status-incident',
@@ -61,10 +78,16 @@ export const PriorityAlertsPanel: React.FC<PriorityAlertsPanelProps> = ({ data }
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <button className="flex-1 py-1 px-2 rounded-md bg-surface-overlay border border-surface-border text-label-sm hover:bg-surface-hover transition-colors">
+                    <button 
+                      onClick={(e) => handleAcknowledge(e, alert.title)}
+                      className="flex-1 py-1 px-2 rounded-md bg-surface-overlay border border-surface-border text-label-sm hover:bg-surface-hover transition-colors"
+                    >
                       Acknowledge
                     </button>
-                    <button className="py-1 px-2 rounded-md bg-surface-overlay border border-surface-border text-label-sm hover:bg-surface-hover transition-colors">
+                    <button 
+                      onClick={() => handleView(alert.system)}
+                      className="py-1 px-2 rounded-md bg-surface-overlay border border-surface-border text-label-sm hover:bg-surface-hover transition-colors"
+                    >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

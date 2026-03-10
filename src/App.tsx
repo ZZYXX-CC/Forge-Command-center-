@@ -10,10 +10,13 @@ import { TradingSnapshotCard } from './components/cards/TradingSnapshotCard';
 import { WebOpsCard } from './components/cards/WebOpsCard';
 import { DeploymentCard } from './components/cards/DeploymentCard';
 import { MessagingCard } from './components/cards/MessagingCard';
+import { TaskManagementCard } from './components/cards/TaskManagementCard';
 import { RecentChangesCard } from './components/cards/RecentChangesCard';
 import { PriorityAlertsPanel } from './components/panels/PriorityAlertsPanel';
 import { ActionQueuePanel } from './components/panels/ActionQueuePanel';
 import { CommandPalette } from './components/CommandPalette';
+import { DashboardCustomizer } from './components/DashboardCustomizer';
+import { useDashboardSettings } from './lib/useDashboardSettings';
 import { TradingOps } from './pages/TradingOps';
 import { WebOps } from './pages/WebOps';
 import { Deployments } from './pages/Deployments';
@@ -25,20 +28,30 @@ import { Settings } from './pages/Settings';
 import { TradingP2P } from './pages/TradingP2P';
 import { ComponentLibrary } from './pages/ComponentLibrary';
 import { cn } from './lib/utils';
+import { ToastProvider } from './components/primitives/Toast';
 
 const queryClient = new QueryClient();
 
-function DashboardOverview({ data }: { data: OverviewState }) {
+function DashboardOverview({ data, filter, visibleWidgets }: { data: OverviewState; filter: string; visibleWidgets: string[] }) {
+  const showTrading = (filter === 'all' || filter === 'trading') && visibleWidgets.includes('trading');
+  const showWeb = (filter === 'all' || filter === 'web') && visibleWidgets.includes('web');
+  const showDeployments = (filter === 'all' || filter === 'deployments') && visibleWidgets.includes('deployments');
+  const showMessaging = (filter === 'all' || filter === 'messaging') && visibleWidgets.includes('messaging');
+  const showTasks = (filter === 'all' || filter === 'tasks') && visibleWidgets.includes('tasks');
+  const showHealth = visibleWidgets.includes('health');
+  const showChanges = visibleWidgets.includes('changes');
+
   return (
     <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
       <div className="max-w-[1400px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-          <SystemHealthCard data={data} />
-          <TradingSnapshotCard data={data} />
-          <WebOpsCard data={data} />
-          <DeploymentCard data={data} />
-          <MessagingCard data={data} />
-          <RecentChangesCard data={data} />
+          {showHealth && <SystemHealthCard data={data} />}
+          {showTrading && <TradingSnapshotCard data={data} />}
+          {showWeb && <WebOpsCard data={data} />}
+          {showDeployments && <DeploymentCard data={data} />}
+          {showMessaging && <MessagingCard data={data} />}
+          {showTasks && <TaskManagementCard data={data} />}
+          {showChanges && <RecentChangesCard data={data} />}
         </div>
       </div>
 
@@ -56,6 +69,9 @@ function DashboardOverview({ data }: { data: OverviewState }) {
 function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [currentFilter, setCurrentFilter] = useState('all');
+  const { settings, toggleWidget, reorderWidgets } = useDashboardSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -210,6 +226,9 @@ function Dashboard() {
       <HealthStrip 
         data={data} 
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+        currentFilter={currentFilter}
+        onFilterChange={setCurrentFilter}
+        onCustomizeClick={() => setIsCustomizerOpen(true)}
       />
       
       <div className="flex flex-col flex-1 pt-12">
@@ -243,7 +262,7 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<DashboardOverview data={data} />} />
+            <Route path="/" element={<DashboardOverview data={data} filter={currentFilter} visibleWidgets={settings.visibleWidgets} />} />
             <Route path="/trading" element={<TradingOps />} />
             <Route path="/web-ops" element={<WebOps />} />
             <Route path="/deployments" element={<Deployments />} />
@@ -274,6 +293,13 @@ function Dashboard() {
       </div>
 
       <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
+      <DashboardCustomizer 
+        isOpen={isCustomizerOpen} 
+        onClose={() => setIsCustomizerOpen(false)}
+        settings={settings}
+        onToggleWidget={toggleWidget}
+        onReorderWidgets={reorderWidgets}
+      />
     </div>
   );
 }
@@ -281,9 +307,11 @@ function Dashboard() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Dashboard />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <Dashboard />
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

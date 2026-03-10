@@ -6,7 +6,7 @@ import { ForgeIcon } from './ForgeIcon';
 // --- SparkLine ---
 export const SparkLine = ({ 
   data, 
-  color = '#5fb87a',
+  color = 'var(--emerald-accent)',
   height = 30,
   className 
 }: { 
@@ -48,7 +48,7 @@ export const MiniBarChart = ({
           {data.map((entry, index) => (
             <Cell 
               key={`cell-${index}`} 
-              fill={entry.status === 'error' ? '#c95f5f' : '#5fb87a'} 
+              fill={entry.status === 'error' ? 'var(--color-status-incident)' : 'var(--emerald-accent)'} 
               fillOpacity={0.6}
             />
           ))}
