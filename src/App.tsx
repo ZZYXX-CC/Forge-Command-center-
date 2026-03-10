@@ -5,73 +5,26 @@ import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
 import { IncidentBanner } from './components/layout/IncidentBanner';
 import { DomainNav } from './components/layout/DomainNav';
-import { SystemHealthCard } from './components/cards/SystemHealthCard';
-import { TradingSnapshotCard } from './components/cards/TradingSnapshotCard';
-import { WebOpsCard } from './components/cards/WebOpsCard';
-import { DeploymentCard } from './components/cards/DeploymentCard';
-import { MessagingCard } from './components/cards/MessagingCard';
-import { TaskManagementCard } from './components/cards/TaskManagementCard';
-import { RecentChangesCard } from './components/cards/RecentChangesCard';
-import { PriorityAlertsPanel } from './components/panels/PriorityAlertsPanel';
-import { ActionQueuePanel } from './components/panels/ActionQueuePanel';
 import { CommandPalette } from './components/CommandPalette';
-import { DashboardCustomizer } from './components/DashboardCustomizer';
-import { useDashboardSettings } from './lib/useDashboardSettings';
+import { MorningBrief } from './pages/MorningBrief';
 import { TradingOps } from './pages/TradingOps';
-import { WebOps } from './pages/WebOps';
-import { Deployments } from './pages/Deployments';
-import { Messaging } from './pages/Messaging';
-import { Finance } from './pages/Finance';
-import { Incidents } from './pages/Incidents';
-import { Audit } from './pages/Audit';
-import { Settings } from './pages/Settings';
 import { TradingP2P } from './pages/TradingP2P';
+import { Sites } from './pages/Sites';
+import { Money } from './pages/Money';
+import { Tasks } from './pages/Tasks';
+import { Clients } from './pages/Clients';
+import { BotTeam } from './pages/BotTeam';
+import { Content } from './pages/Content';
+import { Settings } from './pages/Settings';
 import { ComponentLibrary } from './pages/ComponentLibrary';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 
 const queryClient = new QueryClient();
 
-function DashboardOverview({ data, filter, visibleWidgets }: { data: OverviewState; filter: string; visibleWidgets: string[] }) {
-  const showTrading = (filter === 'all' || filter === 'trading') && visibleWidgets.includes('trading');
-  const showWeb = (filter === 'all' || filter === 'web') && visibleWidgets.includes('web');
-  const showDeployments = (filter === 'all' || filter === 'deployments') && visibleWidgets.includes('deployments');
-  const showMessaging = (filter === 'all' || filter === 'messaging') && visibleWidgets.includes('messaging');
-  const showTasks = (filter === 'all' || filter === 'tasks') && visibleWidgets.includes('tasks');
-  const showHealth = visibleWidgets.includes('health');
-  const showChanges = visibleWidgets.includes('changes');
-
-  return (
-    <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-      <div className="max-w-[1400px] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
-          {showHealth && <SystemHealthCard data={data} />}
-          {showTrading && <TradingSnapshotCard data={data} />}
-          {showWeb && <WebOpsCard data={data} />}
-          {showDeployments && <DeploymentCard data={data} />}
-          {showMessaging && <MessagingCard data={data} />}
-          {showTasks && <TaskManagementCard data={data} />}
-          {showChanges && <RecentChangesCard data={data} />}
-        </div>
-      </div>
-
-      {/* Mobile-only panels at bottom */}
-      <div className="lg:hidden mt-8 space-y-8 pb-8">
-        <div className="h-px bg-surface-border" />
-        <PriorityAlertsPanel data={data} />
-        <div className="h-px bg-surface-border" />
-        <ActionQueuePanel data={data} />
-      </div>
-    </main>
-  );
-}
-
 function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [currentFilter, setCurrentFilter] = useState('all');
-  const { settings, toggleWidget, reorderWidgets } = useDashboardSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -210,13 +163,15 @@ function Dashboard() {
   }
 
   const activeNavId = 
+    location.pathname === '/' ? 'overview' : 
     location.pathname === '/trading' ? 'trading' : 
-    location.pathname === '/web-ops' ? 'web' : 
-    location.pathname === '/deployments' ? 'deployments' : 
-    location.pathname === '/messaging' ? 'messaging' : 
-    location.pathname === '/finance' ? 'finance' : 
-    location.pathname === '/incidents' ? 'incidents' : 
-    location.pathname === '/audit' ? 'audit' : 
+    location.pathname === '/p2p' ? 'p2p' : 
+    location.pathname === '/sites' ? 'sites' : 
+    location.pathname === '/money' ? 'money' : 
+    location.pathname === '/tasks' ? 'tasks' : 
+    location.pathname === '/clients' ? 'clients' : 
+    location.pathname === '/bots' ? 'bots' : 
+    location.pathname === '/content' ? 'content' : 
     location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 
     'overview';
@@ -226,9 +181,8 @@ function Dashboard() {
       <HealthStrip 
         data={data} 
         onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-        currentFilter={currentFilter}
-        onFilterChange={setCurrentFilter}
-        onCustomizeClick={() => setIsCustomizerOpen(true)}
+        currentFilter=""
+        onFilterChange={() => {}}
       />
       
       <div className="flex flex-col flex-1 pt-12">
@@ -262,44 +216,22 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<DashboardOverview data={data} filter={currentFilter} visibleWidgets={settings.visibleWidgets} />} />
+            <Route path="/" element={<MorningBrief data={data} />} />
             <Route path="/trading" element={<TradingOps />} />
-            <Route path="/web-ops" element={<WebOps />} />
-            <Route path="/deployments" element={<Deployments />} />
-            <Route path="/messaging" element={<Messaging />} />
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/incidents" element={<Incidents />} />
-            <Route path="/audit" element={<Audit />} />
-            <Route path="/trading/p2p" element={<TradingP2P />} />
+            <Route path="/p2p" element={<TradingP2P />} />
+            <Route path="/sites" element={<Sites />} />
+            <Route path="/money" element={<Money />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/bots" element={<BotTeam />} />
+            <Route path="/content" element={<Content />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/library" element={<ComponentLibrary />} />
           </Routes>
-
-          {/* Right Rail - Desktop (Only on Overview) */}
-          {location.pathname === '/' && (
-            <aside className="hidden lg:flex w-[300px] sticky top-12 h-[calc(100vh-48px)] bg-surface-base border-l border-surface-border flex-col p-4 overflow-hidden">
-              <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-                <PriorityAlertsPanel data={data} />
-              </div>
-              
-              <div className="h-px bg-surface-border my-6" />
-              
-              <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-                <ActionQueuePanel data={data} />
-              </div>
-            </aside>
-          )}
         </div>
       </div>
 
       <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
-      <DashboardCustomizer 
-        isOpen={isCustomizerOpen} 
-        onClose={() => setIsCustomizerOpen(false)}
-        settings={settings}
-        onToggleWidget={toggleWidget}
-        onReorderWidgets={reorderWidgets}
-      />
     </div>
   );
 }

@@ -12,7 +12,7 @@ interface TradingSnapshotCardProps {
 export const TradingSnapshotCard: React.FC<TradingSnapshotCardProps> = ({ data }) => {
   const navigate = useNavigate();
   const summary = data.tradingSummary;
-  const isPositive = summary.aggregatePnl >= 0;
+  const isPositive = summary.todayPnl >= 0;
 
   return (
     <StatusCard
@@ -39,12 +39,12 @@ export const TradingSnapshotCard: React.FC<TradingSnapshotCardProps> = ({ data }
         </div>
 
         <div className="flex flex-col">
-          <div className="text-label-sm text-text-muted">AGGREGATE PNL (24H)</div>
+          <div className="text-label-sm text-text-muted">TODAY PNL</div>
           <div className={cn(
             "text-display-lg font-mono",
             isPositive ? "text-status-healthy" : "text-status-incident"
           )}>
-            {isPositive ? '+' : ''}{summary.aggregatePnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {summary.pnlCurrency}
+            {isPositive ? '+' : ''}{summary.todayPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
           </div>
         </div>
 
@@ -58,18 +58,18 @@ export const TradingSnapshotCard: React.FC<TradingSnapshotCardProps> = ({ data }
             <div className="text-mono-lg">{summary.openPositions}</div>
           </div>
           <div>
-            <div className="text-label-sm text-text-muted">ERROR RATE (1H)</div>
+            <div className="text-label-sm text-text-muted">SESSION PNL</div>
             <div className={cn(
               "text-mono-lg",
-              summary.errorRate1H > 0.05 ? "text-status-incident" : summary.errorRate1H > 0.01 ? "text-status-degraded" : "text-text-primary"
+              summary.sessionPnl >= 0 ? "text-status-healthy" : "text-status-incident"
             )}>
-              {(summary.errorRate1H * 100).toFixed(2)}%
+              {summary.sessionPnl >= 0 ? '+' : ''}{summary.sessionPnl.toLocaleString()}
             </div>
           </div>
           <div>
-            <div className="text-label-sm text-text-muted">LAST ORDER</div>
+            <div className="text-label-sm text-text-muted">P2P ORDERS</div>
             <div className="text-mono-lg text-text-secondary">
-              {new Date(summary.lastOrderAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {summary.p2pActiveOrders} ACTIVE
             </div>
           </div>
         </div>

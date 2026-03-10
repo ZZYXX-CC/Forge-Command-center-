@@ -61,15 +61,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
   const items: CommandItem[] = [
     // Navigation
-    { id: 'nav-overview', label: 'Go to Overview', icon: Globe, category: 'Navigation', domain: 'Global', shortcut: 'G O', action: () => navigate('/') },
+    { id: 'nav-overview', label: 'Go to Morning Brief', icon: Globe, category: 'Navigation', domain: 'Global', shortcut: 'G O', action: () => navigate('/') },
     { id: 'nav-trading', label: 'Go to Trading Ops', icon: TrendingUp, category: 'Navigation', domain: 'Trading', shortcut: 'G T', action: () => navigate('/trading') },
-    { id: 'nav-trading-p2p', label: 'Go to P2P Fiat Trading', icon: Zap, category: 'Navigation', domain: 'Trading', action: () => navigate('/trading/p2p') },
-    { id: 'nav-web', label: 'Go to Web Ops', icon: Globe, category: 'Navigation', domain: 'Web', shortcut: 'G W', action: () => navigate('/web-ops') },
-    { id: 'nav-deploy', label: 'Go to Deployments', icon: Box, category: 'Navigation', domain: 'Infra', shortcut: 'G D', action: () => navigate('/deployments') },
-    { id: 'nav-messaging', label: 'Go to Messaging', icon: MessageSquare, category: 'Navigation', domain: 'Comms', shortcut: 'G M', action: () => navigate('/messaging') },
-    { id: 'nav-finance', label: 'Go to Finance', icon: DollarSign, category: 'Navigation', domain: 'Finance', shortcut: 'G F', action: () => navigate('/finance') },
-    { id: 'nav-incidents', label: 'Go to Incidents', icon: AlertTriangle, category: 'Navigation', domain: 'Global', shortcut: 'G I', action: () => navigate('/incidents') },
-    { id: 'nav-audit', label: 'Go to Audit Log', icon: FileText, category: 'Navigation', domain: 'Security', shortcut: 'G A', action: () => navigate('/audit') },
+    { id: 'nav-trading-p2p', label: 'Go to P2P Markets', icon: Zap, category: 'Navigation', domain: 'Trading', action: () => navigate('/p2p') },
+    { id: 'nav-sites', label: 'Go to Sites', icon: Globe, category: 'Navigation', domain: 'Web', shortcut: 'G W', action: () => navigate('/sites') },
+    { id: 'nav-money', label: 'Go to Money', icon: DollarSign, category: 'Navigation', domain: 'Finance', shortcut: 'G F', action: () => navigate('/money') },
+    { id: 'nav-tasks', label: 'Go to Tasks', icon: FileText, category: 'Navigation', domain: 'Ops', shortcut: 'G K', action: () => navigate('/tasks') },
+    { id: 'nav-clients', label: 'Go to Clients', icon: FileText, category: 'Navigation', domain: 'Business', shortcut: 'G C', action: () => navigate('/clients') },
+    { id: 'nav-bots', label: 'Go to Bot Team', icon: Box, category: 'Navigation', domain: 'Automation', shortcut: 'G B', action: () => navigate('/bots') },
+    { id: 'nav-content', label: 'Go to Content', icon: FileText, category: 'Navigation', domain: 'Media', shortcut: 'G M', action: () => navigate('/content') },
+    { id: 'nav-settings', label: 'Go to Settings', icon: Settings, category: 'Navigation', domain: 'App', shortcut: 'G S', action: () => navigate('/settings') },
     
     // Actions
     { id: 'ack-all', label: 'Acknowledge all alerts', icon: Shield, category: 'Actions', domain: 'Global', action: () => {} },

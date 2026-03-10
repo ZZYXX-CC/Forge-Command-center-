@@ -2,18 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  Globe, 
-  Box, 
-  MessageSquare, 
-  DollarSign, 
-  AlertTriangle, 
-  FileText,
-  Settings,
   Command,
   X
 } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 import { OverviewState } from '@/src/types';
 
 interface DomainNavProps {
@@ -26,15 +18,15 @@ interface DomainNavProps {
 export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview', isMobile, onSelect }) => {
   const navigate = useNavigate();
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard, domainId: null, path: '/' },
-    { id: 'trading', label: 'Trading Ops', icon: TrendingUp, domainId: 'trading', path: '/trading' },
-    { id: 'web', label: 'Web / Client Ops', icon: Globe, domainId: 'web', path: '/web-ops' },
-    { id: 'deployments', label: 'Deployments', icon: Box, domainId: 'deployments', path: '/deployments' },
-    { id: 'messaging', label: 'Messaging / Comms', icon: MessageSquare, domainId: 'messaging', path: '/messaging' },
-    { id: 'finance', label: 'Finance', icon: DollarSign, domainId: 'finance', path: '/finance' },
-    { id: 'incidents', label: 'Incidents', icon: AlertTriangle, domainId: 'incidents', path: '/incidents' },
-    { id: 'audit', label: 'Audit / Logs', icon: FileText, domainId: 'audit', path: '/audit' },
-    { id: 'library', label: 'UI Library', icon: LayoutDashboard, domainId: null, path: '/library' },
+    { id: 'overview', label: 'Morning Brief', icon: 'home-smile', path: '/' },
+    { id: 'trading', label: 'Trading Ops', icon: 'graph-new', path: '/trading' },
+    { id: 'p2p', label: 'P2P Markets', icon: 'bolt', path: '/p2p' },
+    { id: 'sites', label: 'Sites', icon: 'global', path: '/sites' },
+    { id: 'money', label: 'Money', icon: 'wallet-money', path: '/money' },
+    { id: 'tasks', label: 'Tasks', icon: 'checklist-minimalistic', path: '/tasks' },
+    { id: 'clients', label: 'Clients', icon: 'users-group-two-rounded', path: '/clients' },
+    { id: 'bots', label: 'Bot Team', icon: 'cpu', path: '/bots' },
+    { id: 'content', label: 'Content', icon: 'camera', path: '/content' },
   ];
 
   const handleNav = (path: string) => {
@@ -59,7 +51,7 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
       <div className="flex-1 px-2 space-y-1">
         {navItems.map((item) => {
           const isActive = activeId === item.id;
-          const domain = item.domainId ? data.domains.find(d => d.id === item.domainId) : null;
+          const domain = data.domains.find(d => d.id === item.id);
           const status = domain?.status || (item.id === 'overview' ? data.globalStatus : 'healthy');
 
           const statusColors = {
@@ -81,10 +73,14 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
                   : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
               )}
             >
-              <item.icon className={cn(
-                "w-4 h-4 transition-colors",
-                isActive ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
-              )} />
+              <ForgeIcon 
+                name={item.icon} 
+                size="sm"
+                className={cn(
+                  "transition-colors",
+                  isActive ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
+                )} 
+              />
               <span className="text-heading-sm flex-1 text-left">{item.label}</span>
               <div className={cn("w-1.5 h-1.5 rounded-full", statusColors[status as keyof typeof statusColors])} />
             </button>
@@ -110,10 +106,14 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
               : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
           )}
         >
-          <Settings className={cn(
-            "w-4 h-4 transition-colors",
-            activeId === 'settings' ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
-          )} />
+          <ForgeIcon 
+            name="settings" 
+            size="sm"
+            className={cn(
+              "transition-colors",
+              activeId === 'settings' ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
+            )} 
+          />
           <span className="text-heading-sm">Settings</span>
         </button>
       </div>

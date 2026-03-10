@@ -37,67 +37,60 @@ const OverviewStateSchema = z.object({
     mode: OperationalMode,
     activeStrategies: z.number(),
     openPositions: z.number(),
-    aggregatePnl: z.number(),
-    pnlCurrency: z.string(),
-    lastOrderAt: z.string(),
-    errorRate1H: z.number(),
+    todayPnl: z.number(),
+    sessionPnl: z.number(),
+    p2pActiveOrders: z.number(),
     riskStatus: z.enum(['within', 'approaching', 'breached']),
+    lastOrderAt: z.string(),
   }),
-  webOpsSummary: z.object({
+  sitesSummary: z.object({
     totalSites: z.number(),
     healthySites: z.number(),
     uptimePct24H: z.number(),
-    activeSessions: z.number().optional(),
     lastDeployAt: z.string(),
-    lastDeployedBy: z.string(),
-    errors5xx1H: z.number(),
-  }),
-  deploymentSummary: z.object({
-    recentDeployments: z.array(z.object({
-      service: z.string(),
-      version: z.string(),
-      deployedBy: z.string(),
-      deployedAt: z.string(),
-      status: z.enum(['success', 'failed', 'in-progress', 'rolled-back']),
-      rollbackAvailable: z.boolean(),
+    sites: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      status: SystemStatus,
+      uptimePct24H: z.number(),
     })),
-    inProgressCount: z.number(),
-    failedLast24H: z.number(),
   }),
-  messagingSummary: z.object({
-    queueDepth: z.number(),
-    processingRatePerMin: z.number(),
-    errorCount1H: z.number(),
-    lastProcessedAt: z.string(),
-    dlqCount: z.number(),
+  moneySummary: z.object({
+    bybitUsdtBalance: z.number(),
+    fiatBalance: z.number(),
+    unpaidInvoices: z.number(),
+    unpaidInvoicesCount: z.number(),
+    thisMonthTradingIncome: z.number(),
+    thisMonthServiceIncome: z.number(),
   }),
-  financeSummary: z.object({
-    status: SystemStatus,
-    lastReconciliationAt: z.string(),
-    pendingItems: z.number(),
-    flaggedItems: z.number(),
+  clientSummary: z.object({
+    activeProjects: z.number(),
+    overdueDeliverables: z.number(),
+    nextDeadline: z.object({
+      client: z.string(),
+      daysRemaining: z.number(),
+    }),
   }),
   taskSummary: z.object({
     openTasks: z.number(),
     overdueCount: z.number(),
     completedToday: z.number(),
+    dueToday: z.number(),
+    topTasks: z.array(z.object({
+      id: z.string(),
+      title: z.string(),
+      completed: z.boolean(),
+    })),
   }),
-  tasks: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    description: z.string().optional(),
-    status: z.enum(['todo', 'in-progress', 'completed']),
-    priority: ActionPriority,
-    domain: z.string(),
-    createdAt: z.string(),
-    dueAt: z.string().optional(),
-    linkedAlertId: z.string().optional(),
-    linkedActionId: z.string().optional(),
-  })),
+  botSummary: z.object({
+    totalBots: z.number(),
+    activeBots: z.number(),
+    errorBots: z.number(),
+  }),
   recentChanges: z.array(z.object({
     id: z.string(),
     occurredAt: z.string(),
-    type: z.enum(['deployment', 'config', 'incident_open', 'incident_close', 'strategy_start', 'strategy_stop', 'alert']),
+    type: z.enum(['BOT ACTION', 'SITE EVENT', 'DEPLOY', 'ORDER FILLED', 'ALERT', 'TASK DUE']),
     description: z.string(),
     actor: z.string(),
     domain: z.string(),
@@ -109,14 +102,6 @@ const OverviewStateSchema = z.object({
     system: z.string(),
     ageMs: z.number(),
     acknowledged: z.boolean(),
-  })),
-  recommendedActions: z.array(z.object({
-    id: z.string(),
-    priority: ActionPriority,
-    description: z.string(),
-    domain: z.string(),
-    ageMs: z.number(),
-    dueAt: z.string().optional(),
   })),
 });
 
@@ -145,83 +130,81 @@ const generateMockData = (): OverviewState => {
       }
     ],
     domains: [
-      { id: 'trading', name: 'Trading Ops', status: 'incident', mode: 'live', lastCheckedAt: now },
-      { id: 'web', name: 'Web / Client Ops', status: 'healthy', mode: 'live', lastCheckedAt: now },
-      { id: 'deployments', name: 'Deployments', status: 'healthy', lastCheckedAt: now },
-      { id: 'messaging', name: 'Messaging / Comms', status: 'degraded', lastCheckedAt: now, degradedSinceMs: 1380000 },
-      { id: 'finance', name: 'Finance', status: 'healthy', mode: 'paper', lastCheckedAt: now },
-      { id: 'incidents', name: 'Incidents', status: 'incident', lastCheckedAt: now },
-      { id: 'audit', name: 'Audit / Logs', status: 'healthy', lastCheckedAt: now },
+      { id: 'overview', name: 'Morning Brief', status: 'healthy', lastCheckedAt: now },
+      { id: 'trading', name: 'Trading Ops', status: 'healthy', mode: 'live', lastCheckedAt: now },
+      { id: 'p2p', name: 'P2P Markets', status: 'healthy', lastCheckedAt: now },
+      { id: 'sites', name: 'Sites', status: 'healthy', lastCheckedAt: now },
+      { id: 'money', name: 'Money', status: 'healthy', lastCheckedAt: now },
+      { id: 'tasks', name: 'Tasks', status: 'healthy', lastCheckedAt: now },
+      { id: 'clients', name: 'Clients', status: 'healthy', lastCheckedAt: now },
+      { id: 'bots', name: 'Bot Team', status: 'healthy', lastCheckedAt: now },
+      { id: 'content', name: 'Content', status: 'healthy', lastCheckedAt: now },
+      { id: 'settings', name: 'Settings', status: 'healthy', lastCheckedAt: now },
     ],
     tradingSummary: {
       mode: 'live',
       activeStrategies: 12,
       openPositions: 43,
-      aggregatePnl: -12450.50,
-      pnlCurrency: 'USD',
+      todayPnl: 1245.50,
+      sessionPnl: 450.20,
+      p2pActiveOrders: 2,
+      riskStatus: 'within',
       lastOrderAt: new Date(Date.now() - 45000).toISOString(),
-      errorRate1H: 0.045,
-      riskStatus: 'approaching',
     },
-    webOpsSummary: {
-      totalSites: 8,
-      healthySites: 8,
+    sitesSummary: {
+      totalSites: 12,
+      healthySites: 11,
       uptimePct24H: 99.98,
-      activeSessions: 1240,
       lastDeployAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-      lastDeployedBy: 'j.smith',
-      errors5xx1H: 0,
-    },
-    deploymentSummary: {
-      recentDeployments: [
-        { service: 'auth-api', version: 'v2.4.1', deployedBy: 'a.chen', deployedAt: new Date(Date.now() - 1800000).toISOString(), status: 'success', rollbackAvailable: true },
-        { service: 'trading-ui', version: 'v1.9.0', deployedBy: 'm.ross', deployedAt: new Date(Date.now() - 7200000).toISOString(), status: 'success', rollbackAvailable: true },
-        { service: 'data-pipeline', version: 'v0.8.4-beta', deployedBy: 'system', deployedAt: new Date(Date.now() - 14400000).toISOString(), status: 'failed', rollbackAvailable: false },
+      sites: [
+        { id: 'site-1', name: 'nuvue.studio', status: 'healthy', uptimePct24H: 100 },
+        { id: 'site-2', name: 'openclaw.io', status: 'healthy', uptimePct24H: 99.9 },
+        { id: 'site-3', name: 'client-a.com', status: 'degraded', uptimePct24H: 98.5 },
+        { id: 'site-4', name: 'client-b.io', status: 'healthy', uptimePct24H: 100 },
       ],
-      inProgressCount: 0,
-      failedLast24H: 1,
     },
-    messagingSummary: {
-      queueDepth: 1450,
-      processingRatePerMin: 850,
-      errorCount1H: 12,
-      lastProcessedAt: new Date(Date.now() - 2000).toISOString(),
-      dlqCount: 43,
+    moneySummary: {
+      bybitUsdtBalance: 45200.50,
+      fiatBalance: 1250000,
+      unpaidInvoices: 8450.00,
+      unpaidInvoicesCount: 3,
+      thisMonthTradingIncome: 4200.00,
+      thisMonthServiceIncome: 12500.00,
     },
-    financeSummary: {
-      status: 'healthy',
-      lastReconciliationAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-      pendingItems: 12,
-      flaggedItems: 0,
+    clientSummary: {
+      activeProjects: 5,
+      overdueDeliverables: 1,
+      nextDeadline: {
+        client: 'Acme Corp',
+        daysRemaining: 2,
+      },
     },
     taskSummary: {
       openTasks: 24,
       overdueCount: 2,
       completedToday: 15,
+      dueToday: 8,
+      topTasks: [
+        { id: 'tsk-1', title: 'Review Acme deliverables', completed: false },
+        { id: 'tsk-2', title: 'Update trading risk limits', completed: false },
+        { id: 'tsk-3', title: 'Shoot nuvue promo video', completed: false },
+        { id: 'tsk-4', title: 'P2P reconciliation', completed: true },
+      ],
     },
-    tasks: [
-      { id: 'tsk-1', title: 'Acknowledge trading alert', status: 'todo', priority: 'urgent', domain: 'Trading', createdAt: new Date(Date.now() - 120000).toISOString(), linkedAlertId: 'alt-1', linkedActionId: 'act-1' },
-      { id: 'tsk-2', title: 'Review failed deployment', status: 'in-progress', priority: 'high', domain: 'Web', createdAt: new Date(Date.now() - 900000).toISOString(), linkedActionId: 'act-2' },
-      { id: 'tsk-3', title: 'Check DLQ — 43 messages', status: 'todo', priority: 'medium', domain: 'Messaging', createdAt: new Date(Date.now() - 3600000).toISOString(), linkedActionId: 'act-3' },
-      { id: 'tsk-4', title: 'Rotate API keys', status: 'todo', priority: 'low', domain: 'Finance', createdAt: now, dueAt: now, linkedActionId: 'act-4' },
-      { id: 'tsk-5', title: 'Review audit log flagged item', status: 'completed', priority: 'info', domain: 'Audit', createdAt: new Date(Date.now() - 10800000).toISOString(), linkedActionId: 'act-5' },
-    ],
+    botSummary: {
+      totalBots: 6,
+      activeBots: 5,
+      errorBots: 0,
+    },
     recentChanges: [
-      { id: 'chg-1', occurredAt: new Date(Date.now() - 600000).toISOString(), type: 'incident_open', description: 'Order routing failure detected', actor: 'system', domain: 'trading' },
-      { id: 'chg-2', occurredAt: new Date(Date.now() - 1800000).toISOString(), type: 'deployment', description: 'auth-api v2.4.1 deployed', actor: 'a.chen', domain: 'deployments' },
-      { id: 'chg-3', occurredAt: new Date(Date.now() - 3600000).toISOString(), type: 'config', description: 'Updated risk limits for strategy ALPHA', actor: 's.jones', domain: 'trading' },
-      { id: 'chg-4', occurredAt: new Date(Date.now() - 7200000).toISOString(), type: 'strategy_stop', description: 'Strategy BETA halted manually', actor: 'm.ross', domain: 'trading' },
+      { id: 'chg-1', occurredAt: new Date(Date.now() - 600000).toISOString(), type: 'BOT ACTION', description: 'TrendFollower_V2 scaled up BTC position', actor: 'bot-1', domain: 'trading' },
+      { id: 'chg-2', occurredAt: new Date(Date.now() - 1800000).toISOString(), type: 'DEPLOY', description: 'nuvue.studio v2.4.1 deployed', actor: 'iCHRIS', domain: 'sites' },
+      { id: 'chg-3', occurredAt: new Date(Date.now() - 3600000).toISOString(), type: 'ORDER FILLED', description: 'P2P Sell Order #8842 filled (500 USDT)', actor: 'system', domain: 'p2p' },
+      { id: 'chg-4', occurredAt: new Date(Date.now() - 7200000).toISOString(), type: 'ALERT', description: 'Client-A latency spike detected', actor: 'monitor', domain: 'sites' },
     ],
     priorityAlerts: [
-      { id: 'alt-1', severity: 'critical', title: 'Order Router Failure rate 34%', system: 'Trading Engine', ageMs: 480000, acknowledged: false },
-      { id: 'alt-2', severity: 'high', title: 'DLQ Threshold Breached', system: 'Messaging Queue', ageMs: 1200000, acknowledged: false },
-    ],
-    recommendedActions: [
-      { id: 'act-1', priority: 'urgent', description: 'Acknowledge trading alert', domain: 'Trading', ageMs: 120000 },
-      { id: 'act-2', priority: 'high', description: 'Review failed deployment', domain: 'Web', ageMs: 900000 },
-      { id: 'act-3', priority: 'medium', description: 'Check DLQ — 43 messages', domain: 'Messaging', ageMs: 3600000 },
-      { id: 'act-4', priority: 'low', description: 'Rotate API keys (due today)', domain: 'Finance', ageMs: 0 },
-      { id: 'act-5', priority: 'info', description: 'Review audit log flagged item', domain: 'Audit', ageMs: 10800000 },
+      { id: 'alt-1', severity: 'high', title: 'Invoice #442 overdue (Acme Corp)', system: 'Finance', ageMs: 172800000, acknowledged: false },
+      { id: 'alt-2', severity: 'medium', title: 'SSL Cert expiring in 12 days (personal.me)', system: 'Sites', ageMs: 3600000, acknowledged: false },
     ],
   };
 };
@@ -234,13 +217,6 @@ async function startServer() {
 
   app.get("/api/overview-state", (req, res) => {
     res.json(generateMockData());
-  });
-
-  app.post("/api/tasks/:id/status", express.json(), (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-    console.log(`Task ${id} status updated to ${status}`);
-    res.json({ success: true, id, status });
   });
 
   app.get("/api/web-ops-state", (req, res) => {
