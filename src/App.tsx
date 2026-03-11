@@ -28,7 +28,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { data, isLoading, error } = useQuery<OverviewState>({
+  const { data, isLoading, error, isFetching, dataUpdatedAt, refetch } = useQuery<OverviewState>({
     queryKey: ['overview-state'],
     queryFn: async () => {
       const res = await fetch('/api/overview-state');
@@ -216,7 +216,7 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<MorningBrief data={data} />} />
+            <Route path="/" element={<MorningBrief data={data} isLoading={isFetching} isError={!!error} onRetry={refetch} fetchedAt={dataUpdatedAt} />} />
             <Route path="/trading" element={<TradingOps />} />
             <Route path="/p2p" element={<TradingP2P />} />
             <Route path="/sites" element={<Sites />} />
