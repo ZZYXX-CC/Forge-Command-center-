@@ -227,7 +227,7 @@ const generateMockData = (): OverviewState => {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.get("/api/overview-state", (req, res) => {
     res.json(generateMockData());
