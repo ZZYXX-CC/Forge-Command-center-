@@ -1,7 +1,14 @@
 import React from 'react';
 import { ForgeIcon } from '../components/primitives/ForgeIcon';
+import { OverviewState } from '../types';
 
-export const BotTeam: React.FC = () => {
+interface BotTeamProps {
+  data: OverviewState;
+}
+
+export const BotTeam: React.FC<BotTeamProps> = ({ data }) => {
+  const { botSummary } = data;
+  
   return (
     <main className="flex-1 p-6 bg-surface-base">
       <div className="max-w-[1200px] mx-auto space-y-8">
@@ -20,24 +27,26 @@ export const BotTeam: React.FC = () => {
           <div className="bg-surface-raised border border-surface-border rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-heading-sm text-text-primary">Active Bots</div>
-              <div className="text-mono-lg text-status-healthy">5</div>
+              <div className="text-mono-lg text-status-healthy">{botSummary.activeBots}</div>
             </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">TOTAL FLEET</span>
-              <span className="text-text-primary font-mono">6</span>
+              <span className="text-text-primary font-mono">{botSummary.totalBots}</span>
             </div>
           </div>
 
           <div className="bg-surface-raised border border-surface-border rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-heading-sm text-text-primary">Fleet Health</div>
-              <div className="text-mono-lg text-status-healthy">100%</div>
+              <div className="text-mono-lg text-status-healthy">
+                {Math.round((botSummary.activeBots / botSummary.totalBots) * 100)}%
+              </div>
             </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">ERRORS (24H)</span>
-              <span className="text-text-primary font-mono">0</span>
+              <span className="text-text-primary font-mono">{botSummary.errorBots}</span>
             </div>
           </div>
         </div>

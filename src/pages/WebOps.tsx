@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { WebOpsState, WebSite } from '@/src/types/webOps';
 import { WebOpsKPIStrip } from '@/src/components/web/WebOpsKPIStrip';
+import { generateMockWebOpsData } from '@/src/lib/mockData';
 import { SiteRosterTable } from '@/src/components/web/SiteRosterTable';
 import { ErrorLogCard } from '@/src/components/web/ErrorLogCard';
 import { CDNStatusCard } from '@/src/components/web/CDNStatusCard';
@@ -26,9 +27,9 @@ export const WebOps: React.FC = () => {
   const { data, isLoading, error, refetch } = useQuery<WebOpsState>({
     queryKey: ['web-ops-state', env],
     queryFn: async () => {
-      const res = await fetch(`/api/web-ops-state?env=${env}`);
-      if (!res.ok) throw new Error('Failed to fetch web ops state');
-      return res.json();
+      // Simulating network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return generateMockWebOpsData();
     },
     refetchInterval: 15000,
   });

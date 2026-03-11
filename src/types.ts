@@ -58,13 +58,17 @@ export interface OverviewState {
       uptimePct24H: number;
     }>;
   };
-  moneySummary: {
+  financeSummary: {
+    status: SystemStatus;
     bybitUsdtBalance: number;
     fiatBalance: number;
     unpaidInvoices: number;
     unpaidInvoicesCount: number;
     thisMonthTradingIncome: number;
     thisMonthServiceIncome: number;
+    pendingItems: number;
+    flaggedItems: number;
+    lastReconciliationAt: string;
   };
   clientSummary: {
     activeProjects: number;
@@ -90,6 +94,12 @@ export interface OverviewState {
     activeBots: number;
     errorBots: number;
   };
+  contentSummary: {
+    pipelineCount: number;
+    inProduction: number;
+    storageUsedPct: number;
+    totalAssets: number;
+  };
   recentChanges: Array<{
     id: string;
     occurredAt: string;
@@ -105,5 +115,12 @@ export interface OverviewState {
     system: string;
     ageMs: number;
     acknowledged: boolean;
+  }>;
+  recommendedActions: Array<{
+    id: string;
+    priority: ActionPriority;
+    description: string;
+    domain: string;
+    ageMs: number;
   }>;
 }

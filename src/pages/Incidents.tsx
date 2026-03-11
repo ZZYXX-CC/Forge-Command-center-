@@ -1,23 +1,14 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/src/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, ShieldAlert, Clock, CheckCircle2, RefreshCw, ArrowRight, MessageSquare, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Clock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { OverviewState } from '../types';
 
-export const Incidents: React.FC = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['incident-state'],
-    queryFn: async () => {
-      const res = await fetch('/api/overview-state'); // Using overview state for now
-      if (!res.ok) throw new Error('Failed to fetch incident state');
-      return res.json();
-    },
-    refetchInterval: 10000,
-  });
+interface IncidentsProps {
+  data: OverviewState;
+}
 
-  if (isLoading) return <div className="p-8 text-text-muted animate-pulse">Loading Incidents...</div>;
-  if (error || !data) return <div className="p-8 text-status-incident">Error loading incident state</div>;
-
+export const Incidents: React.FC<IncidentsProps> = ({ data }) => {
   const incidents = data.incidents;
 
   return (

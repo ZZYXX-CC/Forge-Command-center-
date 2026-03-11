@@ -43,6 +43,7 @@ import {
   LiveIndicator,
   MonoText,
   DeltaIndicator,
+  FreshnessIndicator,
   MetricGrid,
   PageHeader,
   SectionDivider,
@@ -57,9 +58,9 @@ import {
   CopyableValue
 } from '@/src/components/ui';
 import { SpreadHeatmap } from '@/src/components/ui/SpreadHeatmap';
-import { FreshnessIndicator } from '@/src/components/primitives/FreshnessIndicator';
 import { P2PTradingState } from '@/src/types/trading';
 import { format } from 'date-fns';
+import { generateMockP2PData } from '@/src/lib/mockData';
 
 export const TradingP2P: React.FC = () => {
   const [timeRange, setTimeRange] = useState('24h');
@@ -67,31 +68,15 @@ export const TradingP2P: React.FC = () => {
   const [fiat, setFiat] = useState('NGN');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const isDisabled = token === 'BTC' && fiat === 'KES';
-
   const { data, isLoading, error, refetch } = useQuery<P2PTradingState>({
     queryKey: ['p2p-trading-state', timeRange, token, fiat],
     queryFn: async () => {
-      const res = await fetch(`/api/p2p-trading-state?timeRange=${timeRange}&token=${token}&fiat=${fiat}`);
-      if (!res.ok) throw new Error('Failed to fetch P2P trading state');
-      return res.json();
+      // Simulating network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return generateMockP2PData();
     },
-    enabled: !isDisabled,
-    retry: 2,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchInterval: 5000,
   });
-
-  if (isDisabled) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <h2 className="text-display-md text-text-primary">P2P disabled for selected pair</h2>
-          <p className="text-text-secondary">Switch to a supported token/fiat combination.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -120,20 +105,6 @@ export const TradingP2P: React.FC = () => {
     );
   }
 
-  if (data.snapshots.length === 0) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h2 className="text-display-md text-text-primary">No P2P snapshot data</h2>
-          <Button variant="secondary" onClick={() => refetch()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const staleSeconds = (Date.now() - new Date(data.lastSync).getTime()) / 1000;
-  const isStale = staleSeconds > 60;
-
   return (
     <main className="flex-1 p-4 lg:p-6 overflow-y-auto bg-[#0B1020]">
       <div className="max-w-[1600px] mx-auto space-y-6">
@@ -150,8 +121,6 @@ export const TradingP2P: React.FC = () => {
               <span className="mx-1">•</span>
               <Activity className="w-3.5 h-3.5 text-status-healthy" />
               <span className="text-status-healthy">Health: {data.streamHealth}</span>
-              {isStale && <Badge variant="warning">Stale</Badge>}
-              <FreshnessIndicator timestamp={data.lastSync} />
             </div>
           </div>
 

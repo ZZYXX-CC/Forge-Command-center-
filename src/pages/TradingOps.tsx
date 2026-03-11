@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { TradingState } from '@/src/types/trading';
 import { ExecutionHealthBar } from '@/src/components/trading/ExecutionHealthBar';
@@ -20,7 +21,7 @@ import {
 } from 'recharts';
 import { cn } from '@/src/lib/utils';
 import { TrendingUp, TrendingDown, Clock, Maximize2, Minimize2, Zap, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { generateMockTradingData } from '@/src/lib/mockData';
 
 export const TradingOps: React.FC = () => {
   const navigate = useNavigate();
@@ -41,9 +42,9 @@ export const TradingOps: React.FC = () => {
   const { data, isLoading, error } = useQuery<TradingState>({
     queryKey: ['trading-state', timeframe],
     queryFn: async () => {
-      const res = await fetch(`/api/trading-state?timeframe=${timeframe}`);
-      if (!res.ok) throw new Error('Failed to fetch trading state');
-      return res.json();
+      // Simulating network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return generateMockTradingData();
     },
     refetchInterval: 5000, // Refresh every 5s for trading
   });

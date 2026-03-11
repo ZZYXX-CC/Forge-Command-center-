@@ -1,7 +1,14 @@
 import React from 'react';
 import { ForgeIcon } from '../components/primitives/ForgeIcon';
+import { OverviewState } from '../types';
 
-export const Clients: React.FC = () => {
+interface ClientsProps {
+  data: OverviewState;
+}
+
+export const Clients: React.FC<ClientsProps> = ({ data }) => {
+  const { clientSummary } = data;
+  
   return (
     <main className="flex-1 p-6 bg-surface-base">
       <div className="max-w-[1200px] mx-auto space-y-8">
@@ -20,24 +27,24 @@ export const Clients: React.FC = () => {
           <div className="bg-surface-raised border border-surface-border rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-heading-sm text-text-primary">Active Projects</div>
-              <div className="text-mono-lg text-text-primary">5</div>
+              <div className="text-mono-lg text-text-primary">{clientSummary.activeProjects}</div>
             </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">OVERDUE</span>
-              <span className="text-status-incident font-mono">1</span>
+              <span className="text-status-incident font-mono">{clientSummary.overdueCount}</span>
             </div>
           </div>
 
           <div className="bg-surface-raised border border-surface-border rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="text-heading-sm text-text-primary">Next Deadline</div>
-              <div className="text-mono-lg text-emerald-accent">2D</div>
+              <div className="text-mono-lg text-emerald-accent">{clientSummary.nextDeadline.daysRemaining}D</div>
             </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">CLIENT</span>
-              <span className="text-text-primary font-bold">Acme Corp</span>
+              <span className="text-text-primary font-bold">{clientSummary.nextDeadline.client}</span>
             </div>
           </div>
         </div>

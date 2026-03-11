@@ -3,15 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { DeploymentState } from '@/src/types/deployments';
 import { cn } from '@/src/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { Rocket, Box, CheckCircle2, XCircle, Clock, RotateCcw, Server, Activity, ArrowRight } from 'lucide-react';
+import { Rocket, CheckCircle2, RotateCcw, Server, Activity } from 'lucide-react';
+import { generateMockDeploymentData } from '../lib/mockData';
 
 export const Deployments: React.FC = () => {
   const { data, isLoading, error } = useQuery<DeploymentState>({
     queryKey: ['deployment-state'],
     queryFn: async () => {
-      const res = await fetch('/api/deployment-state');
-      if (!res.ok) throw new Error('Failed to fetch deployment state');
-      return res.json();
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return generateMockDeploymentData();
     },
     refetchInterval: 10000,
   });

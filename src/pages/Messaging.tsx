@@ -3,15 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { MessagingState } from '@/src/types/messaging';
 import { cn } from '@/src/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare, Layers, Activity, AlertTriangle, CheckCircle2, RefreshCw, Trash2, ArrowRight } from 'lucide-react';
+import { Layers, Activity, AlertTriangle } from 'lucide-react';
+import { generateMockMessagingData } from '../lib/mockData';
 
 export const Messaging: React.FC = () => {
   const { data, isLoading, error } = useQuery<MessagingState>({
     queryKey: ['messaging-state'],
     queryFn: async () => {
-      const res = await fetch('/api/messaging-state');
-      if (!res.ok) throw new Error('Failed to fetch messaging state');
-      return res.json();
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return generateMockMessagingData();
     },
     refetchInterval: 10000,
   });

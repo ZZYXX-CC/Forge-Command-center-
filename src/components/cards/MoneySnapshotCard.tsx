@@ -11,13 +11,13 @@ interface MoneySnapshotCardProps {
 
 export const MoneySnapshotCard: React.FC<MoneySnapshotCardProps> = ({ data }) => {
   const navigate = useNavigate();
-  const summary = data.moneySummary;
+  const summary = data.financeSummary;
 
   return (
     <StatusCard
       label="MONEY & FINANCE"
       title="Balance & Revenue"
-      status="healthy"
+      status={summary.status}
       timestamp={data.meta.generatedAt}
       footerAction="View ledger →"
       onFooterActionClick={() => navigate('/money')}

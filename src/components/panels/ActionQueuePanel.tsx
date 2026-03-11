@@ -10,7 +10,7 @@ interface ActionQueuePanelProps {
 }
 
 export const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ data }) => {
-  const actions = data.recommendedActions;
+  const actions = data?.recommendedActions || [];
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -18,9 +18,9 @@ export const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ data }) => {
     showToast(`Executing: ${actionDescription}`, 'info');
     
     // Optional navigation based on domain
-    if (domain.toLowerCase().includes('trading')) navigate('/trading');
-    else if (domain.toLowerCase().includes('web')) navigate('/web-ops');
-    else if (domain.toLowerCase().includes('deploy')) navigate('/deployments');
+    if (domain?.toLowerCase().includes('trading')) navigate('/trading');
+    else if (domain?.toLowerCase().includes('web')) navigate('/web-ops');
+    else if (domain?.toLowerCase().includes('deploy')) navigate('/deployments');
   };
 
   const priorityColors = {
@@ -36,7 +36,7 @@ export const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ data }) => {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-label-md">ACTION QUEUE</h3>
         <span className="bg-surface-overlay border border-surface-border text-text-secondary px-2 py-0.5 rounded-full text-label-sm font-bold">
-          {actions.length}
+          {actions?.length || 0}
         </span>
       </div>
 

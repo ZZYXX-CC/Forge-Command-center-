@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
 import { IncidentBanner } from './components/layout/IncidentBanner';
@@ -9,16 +9,22 @@ import { CommandPalette } from './components/CommandPalette';
 import { MorningBrief } from './pages/MorningBrief';
 import { TradingOps } from './pages/TradingOps';
 import { TradingP2P } from './pages/TradingP2P';
-import { Sites } from './pages/Sites';
+import { WebOps } from './pages/WebOps';
 import { Money } from './pages/Money';
 import { Tasks } from './pages/Tasks';
 import { Clients } from './pages/Clients';
 import { BotTeam } from './pages/BotTeam';
 import { Content } from './pages/Content';
+import { Finance } from './pages/Finance';
+import { Incidents } from './pages/Incidents';
+import { Deployments } from './pages/Deployments';
+import { Audit } from './pages/Audit';
+import { Messaging } from './pages/Messaging';
 import { Settings } from './pages/Settings';
 import { ComponentLibrary } from './pages/ComponentLibrary';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
+import { generateMockOverviewData } from './lib/mockData';
 
 const queryClient = new QueryClient();
 
@@ -28,14 +34,14 @@ function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { data, isLoading, error, isFetching, dataUpdatedAt, refetch } = useQuery<OverviewState>({
+  const { data, isLoading, error } = useQuery<OverviewState>({
     queryKey: ['overview-state'],
     queryFn: async () => {
-      const res = await fetch('/api/overview-state');
-      if (!res.ok) throw new Error('Failed to fetch dashboard state');
-      return res.json();
+      // Simulating network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return generateMockOverviewData();
     },
-    refetchInterval: 10000, // Refresh every 10s
+    refetchInterval: 30000,
   });
 
   // Keyboard Shortcuts
@@ -163,9 +169,9 @@ function Dashboard() {
   }
 
   const activeNavId = 
-    location.pathname === '/' || location.pathname === '/morning-brief' ? 'overview' : 
+    location.pathname === '/' ? 'overview' : 
     location.pathname === '/trading' ? 'trading' : 
-    location.pathname === '/trading/p2p' || location.pathname === '/p2p' ? 'p2p' : 
+    location.pathname === '/p2p' ? 'p2p' : 
     location.pathname === '/sites' ? 'sites' : 
     location.pathname === '/money' ? 'money' : 
     location.pathname === '/tasks' ? 'tasks' : 
@@ -216,17 +222,20 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<Navigate to="/morning-brief" replace />} />
-            <Route path="/morning-brief" element={<MorningBrief data={data} isLoading={isFetching} isError={!!error} onRetry={refetch} fetchedAt={dataUpdatedAt} />} />
+            <Route path="/" element={<MorningBrief data={data} />} />
             <Route path="/trading" element={<TradingOps />} />
-            <Route path="/trading/p2p" element={<TradingP2P />} />
-            <Route path="/p2p" element={<Navigate to="/trading/p2p" replace />} />
-            <Route path="/sites" element={<Sites />} />
-            <Route path="/money" element={<Money />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/bots" element={<BotTeam />} />
-            <Route path="/content" element={<Content />} />
+            <Route path="/p2p" element={<TradingP2P />} />
+            <Route path="/sites" element={<WebOps />} />
+            <Route path="/money" element={<Money data={data} />} />
+            <Route path="/finance" element={<Finance data={data} />} />
+            <Route path="/incidents" element={<Incidents data={data} />} />
+            <Route path="/deployments" element={<Deployments data={data} />} />
+            <Route path="/audit" element={<Audit data={data} />} />
+            <Route path="/messaging" element={<Messaging data={data} />} />
+            <Route path="/tasks" element={<Tasks data={data} />} />
+            <Route path="/clients" element={<Clients data={data} />} />
+            <Route path="/bots" element={<BotTeam data={data} />} />
+            <Route path="/content" element={<Content data={data} />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/library" element={<ComponentLibrary />} />
           </Routes>

@@ -1,23 +1,14 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/src/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { DollarSign, Wallet, ShieldCheck, AlertCircle, FileText, CheckCircle2, RefreshCw, ArrowRight } from 'lucide-react';
+import { DollarSign, ShieldCheck, FileText } from 'lucide-react';
+import { OverviewState } from '../types';
 
-export const Finance: React.FC = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['finance-state'],
-    queryFn: async () => {
-      const res = await fetch('/api/overview-state'); // Using overview state for now
-      if (!res.ok) throw new Error('Failed to fetch finance state');
-      return res.json();
-    },
-    refetchInterval: 10000,
-  });
+interface FinanceProps {
+  data: OverviewState;
+}
 
-  if (isLoading) return <div className="p-8 text-text-muted animate-pulse">Loading Finance...</div>;
-  if (error || !data) return <div className="p-8 text-status-incident">Error loading finance state</div>;
-
+export const Finance: React.FC<FinanceProps> = ({ data }) => {
   const finance = data.financeSummary;
 
   return (

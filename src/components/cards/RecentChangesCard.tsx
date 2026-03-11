@@ -9,7 +9,7 @@ interface RecentChangesCardProps {
 }
 
 export const RecentChangesCard: React.FC<RecentChangesCardProps> = ({ data }) => {
-  const changes = data.recentChanges;
+  const changes = data?.recentChanges || [];
 
   const typeConfig = {
     deployment: { label: 'DEPLOY', color: 'bg-status-info-bg text-status-info' },
@@ -31,7 +31,10 @@ export const RecentChangesCard: React.FC<RecentChangesCardProps> = ({ data }) =>
     >
       <div className="space-y-1 py-2">
         {changes.map((change) => {
-          const config = typeConfig[change.type];
+          const config = typeConfig[change.type as keyof typeof typeConfig] || { 
+            label: 'EVENT', 
+            color: 'bg-status-neutral-bg text-status-neutral' 
+          };
           return (
             <div key={change.id} className="flex items-start gap-3 py-2 border-b border-surface-border last:border-0 group">
               <div className="text-mono-sm text-text-muted min-w-[50px] pt-0.5">

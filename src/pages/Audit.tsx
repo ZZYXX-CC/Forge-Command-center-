@@ -1,23 +1,14 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/src/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { FileText, Search, Filter, Clock, CheckCircle2, RefreshCw, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { FileText, Search, Clock, ShieldCheck } from 'lucide-react';
+import { OverviewState } from '../types';
 
-export const Audit: React.FC = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['audit-state'],
-    queryFn: async () => {
-      const res = await fetch('/api/overview-state'); // Using overview state for now
-      if (!res.ok) throw new Error('Failed to fetch audit state');
-      return res.json();
-    },
-    refetchInterval: 10000,
-  });
+interface AuditProps {
+  data: OverviewState;
+}
 
-  if (isLoading) return <div className="p-8 text-text-muted animate-pulse">Loading Audit Logs...</div>;
-  if (error || !data) return <div className="p-8 text-status-incident">Error loading audit state</div>;
-
+export const Audit: React.FC<AuditProps> = ({ data }) => {
   const changes = data.recentChanges;
 
   return (

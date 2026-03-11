@@ -1,7 +1,14 @@
 import React from 'react';
 import { ForgeIcon } from '../components/primitives/ForgeIcon';
+import { OverviewState } from '../types';
 
-export const Money: React.FC = () => {
+interface MoneyProps {
+  data: OverviewState;
+}
+
+export const Money: React.FC<MoneyProps> = ({ data }) => {
+  const { financeSummary } = data;
+  
   return (
     <main className="flex-1 p-6 bg-surface-base">
       <div className="max-w-[1200px] mx-auto space-y-8">
@@ -22,11 +29,15 @@ export const Money: React.FC = () => {
               <div className="text-heading-md text-text-primary">Bybit USDT Balance</div>
               <ForgeIcon name="wallet-money" size="md" className="text-emerald-accent" />
             </div>
-            <div className="text-display-lg font-mono text-emerald-accent">$45,200.50</div>
+            <div className="text-display-lg font-mono text-emerald-accent">
+              ${financeSummary.bybitUsdtBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">FIAT BALANCE</span>
-              <span className="text-text-primary font-mono">$1.25M</span>
+              <span className="text-text-primary font-mono">
+                ${(financeSummary.fiatBalance / 1000000).toFixed(2)}M
+              </span>
             </div>
           </div>
 
@@ -35,11 +46,15 @@ export const Money: React.FC = () => {
               <div className="text-heading-md text-text-primary">Monthly Revenue</div>
               <ForgeIcon name="graph-new" size="md" className="text-emerald-accent" />
             </div>
-            <div className="text-display-lg font-mono text-status-healthy">+$16,700.00</div>
+            <div className="text-display-lg font-mono text-status-healthy">
+              +${(financeSummary.thisMonthTradingIncome + financeSummary.thisMonthServiceIncome).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <div className="h-px bg-surface-border" />
             <div className="flex items-center justify-between text-label-sm">
               <span className="text-text-muted">UNPAID INVOICES</span>
-              <span className="text-status-degraded font-mono">$8,450.00</span>
+              <span className="text-status-degraded font-mono">
+                ${financeSummary.unpaidInvoices.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
         </div>
