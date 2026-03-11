@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
 import { IncidentBanner } from './components/layout/IncidentBanner';
@@ -28,7 +28,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { data, isLoading, error } = useQuery<OverviewState>({
+  const { data, isLoading, error, isFetching, dataUpdatedAt, refetch } = useQuery<OverviewState>({
     queryKey: ['overview-state'],
     queryFn: async () => {
       const res = await fetch('/api/overview-state');
@@ -163,9 +163,9 @@ function Dashboard() {
   }
 
   const activeNavId = 
-    location.pathname === '/' ? 'overview' : 
+    location.pathname === '/' || location.pathname === '/morning-brief' ? 'overview' : 
     location.pathname === '/trading' ? 'trading' : 
-    location.pathname === '/p2p' ? 'p2p' : 
+    location.pathname === '/trading/p2p' || location.pathname === '/p2p' ? 'p2p' : 
     location.pathname === '/sites' ? 'sites' : 
     location.pathname === '/money' ? 'money' : 
     location.pathname === '/tasks' ? 'tasks' : 
@@ -216,9 +216,11 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<MorningBrief data={data} />} />
+            <Route path="/" element={<Navigate to="/morning-brief" replace />} />
+            <Route path="/morning-brief" element={<MorningBrief data={data} isLoading={isFetching} isError={!!error} onRetry={refetch} fetchedAt={dataUpdatedAt} />} />
             <Route path="/trading" element={<TradingOps />} />
-            <Route path="/p2p" element={<TradingP2P />} />
+            <Route path="/trading/p2p" element={<TradingP2P />} />
+            <Route path="/p2p" element={<Navigate to="/trading/p2p" replace />} />
             <Route path="/sites" element={<Sites />} />
             <Route path="/money" element={<Money />} />
             <Route path="/tasks" element={<Tasks />} />

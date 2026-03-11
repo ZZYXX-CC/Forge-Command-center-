@@ -1,0 +1,21 @@
+{
+  "contractVersion": "edge-risk-v1",
+  "required": [
+    "botStatus",
+    "todayPnlUsd",
+    "openExposureUsd",
+    "drawdownPct",
+    "drawdownLimitPct",
+    "riskStatus",
+    "activeStrategies",
+    "ordersExecutedToday",
+    "engineLatencyMs",
+    "lastSignalAt",
+    "errorRate1h"
+  ],
+  "freshness": {
+    "snapshotTtlSec": 15,
+    "warningAfterSec": 30,
+    "breachAfterSec": 60
+  }
+}

@@ -1,6 +1,12 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { z } from "zod";
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { mapOverviewToEdgeRisk, validateEdgeRequiredFields } from './api/adapters/edgeAdapter';
+import { mapP2PToBridge, validateBridgeSections } from './api/adapters/bridgeAdapter';
+import type { EdgeRiskContract } from './api/contracts/edge';
+import type { BridgeP2PSchema } from './api/contracts/bridge';
 
 // --- Data Contract Definitions ---
 
@@ -106,6 +112,14 @@ const OverviewStateSchema = z.object({
 });
 
 type OverviewState = z.infer<typeof OverviewStateSchema>;
+
+const readJson = <T>(path: string): T => JSON.parse(readFileSync(resolve(process.cwd(), path), 'utf8')) as T;
+
+const EDGE_CONTRACT_PATH = 'docs/EDGE_TRADING_CONTRACT_v1.json';
+const BRIDGE_SCHEMA_PATH = 'docs/BRIDGE_P2P_SCHEMA_v1.json';
+
+const loadEdgeContract = (): EdgeRiskContract => readJson<EdgeRiskContract>(EDGE_CONTRACT_PATH);
+const loadBridgeSchema = (): BridgeP2PSchema => readJson<BridgeP2PSchema>(BRIDGE_SCHEMA_PATH);
 
 // --- Mock Data ---
 
@@ -213,10 +227,25 @@ const generateMockData = (): OverviewState => {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.get("/api/overview-state", (req, res) => {
     res.json(generateMockData());
+  });
+
+  app.get('/api/edge-risk-state', (req, res) => {
+    const overview = generateMockData();
+    const edgeContract = loadEdgeContract();
+    const dto = mapOverviewToEdgeRisk(overview);
+    const missing = validateEdgeRequiredFields(dto, edgeContract);
+
+    res.json({
+      contractVersion: edgeContract.contractVersion,
+      freshness: edgeContract.freshness,
+      valid: missing.length === 0,
+      missing,
+      data: dto,
+    });
   });
 
   app.get("/api/web-ops-state", (req, res) => {
@@ -503,6 +532,38 @@ async function startServer() {
       }
     };
     res.json(p2pState);
+  });
+
+  app.get('/api/bridge-p2p-state', (req, res) => {
+    const now = new Date();
+    const p2pLike = {
+      pair: 'USDT/NGN',
+      lastSync: now.toISOString(),
+      snapshots: Array.from({ length: 12 }).map((_, index) => ({
+        timestamp: new Date(now.getTime() - index * 60000).toISOString(),
+        paymentMethod: index % 2 === 0 ? 'Bank Transfer' : 'Opay',
+        bestBuyPrice: 1540 + Math.random() * 5,
+        bestSellPrice: 1580 + Math.random() * 5,
+        spreadPct: 2.6 + Math.random() * 0.2,
+      })),
+      history: Array.from({ length: 24 }).map((_, index) => ({
+        bucketStart: new Date(now.getTime() - index * 3600000).toISOString(),
+        avgSpreadPct: 2.4 + Math.random() * 0.4,
+        samples: 3600,
+      })),
+    };
+
+    const schema = loadBridgeSchema();
+    const dto = mapP2PToBridge(p2pLike);
+    const missingSections = validateBridgeSections(dto, schema);
+
+    res.json({
+      schemaVersion: schema.schemaVersion,
+      fallback: schema.fallback,
+      valid: missingSections.length === 0,
+      missingSections,
+      data: dto,
+    });
   });
 
   if (process.env.NODE_ENV !== "production") {
