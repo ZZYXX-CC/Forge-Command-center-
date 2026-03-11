@@ -1,26 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
 import { IncidentBanner } from './components/layout/IncidentBanner';
 import { DomainNav } from './components/layout/DomainNav';
-import { CommandPalette } from './components/CommandPalette';
 import { MorningBrief } from './pages/MorningBrief';
-import { TradingOps } from './pages/TradingOps';
-import { TradingP2P } from './pages/TradingP2P';
-import { Sites } from './pages/Sites';
-import { Money } from './pages/Money';
-import { Tasks } from './pages/Tasks';
-import { Clients } from './pages/Clients';
-import { BotTeam } from './pages/BotTeam';
-import { Content } from './pages/Content';
-import { Settings } from './pages/Settings';
-import { ComponentLibrary } from './pages/ComponentLibrary';
+const TradingOps = lazy(() => import('./pages/TradingOps').then((m) => ({ default: m.TradingOps })));
+const TradingP2P = lazy(() => import('./pages/TradingP2P').then((m) => ({ default: m.TradingP2P })));
+const Sites = lazy(() => import('./pages/Sites').then((m) => ({ default: m.Sites })));
+const Money = lazy(() => import('./pages/Money').then((m) => ({ default: m.Money })));
+const Tasks = lazy(() => import('./pages/Tasks').then((m) => ({ default: m.Tasks })));
+const Clients = lazy(() => import('./pages/Clients').then((m) => ({ default: m.Clients })));
+const BotTeam = lazy(() => import('./pages/BotTeam').then((m) => ({ default: m.BotTeam })));
+const Content = lazy(() => import('./pages/Content').then((m) => ({ default: m.Content })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const ComponentLibrary = lazy(() => import('./pages/ComponentLibrary').then((m) => ({ default: m.ComponentLibrary })));
+const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })));
+
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 
 const queryClient = new QueryClient();
+
+const RouteFallback = () => (
+  <div className="flex-1 p-6 flex items-center justify-center">
+    <div className="text-text-secondary animate-pulse">Loading module…</div>
+  </div>
+);
 
 function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -215,25 +222,29 @@ function Dashboard() {
             </div>
           )}
 
-          <Routes>
-            <Route path="/" element={<Navigate to="/morning-brief" replace />} />
-            <Route path="/morning-brief" element={<MorningBrief data={data} isLoading={isFetching} isError={!!error} onRetry={refetch} fetchedAt={dataUpdatedAt} />} />
-            <Route path="/trading" element={<TradingOps />} />
-            <Route path="/trading/p2p" element={<TradingP2P />} />
-            <Route path="/p2p" element={<Navigate to="/trading/p2p" replace />} />
-            <Route path="/sites" element={<Sites />} />
-            <Route path="/money" element={<Money />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/bots" element={<BotTeam />} />
-            <Route path="/content" element={<Content />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/library" element={<ComponentLibrary />} />
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/morning-brief" replace />} />
+              <Route path="/morning-brief" element={<MorningBrief data={data} isLoading={isFetching} isError={!!error} onRetry={refetch} fetchedAt={dataUpdatedAt} />} />
+              <Route path="/trading" element={<TradingOps />} />
+              <Route path="/trading/p2p" element={<TradingP2P />} />
+              <Route path="/p2p" element={<Navigate to="/trading/p2p" replace />} />
+              <Route path="/sites" element={<Sites />} />
+              <Route path="/money" element={<Money />} />
+              <Route path="/tasks" element={<Tasks />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/bots" element={<BotTeam />} />
+              <Route path="/content" element={<Content />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/library" element={<ComponentLibrary />} />
+            </Routes>
+          </Suspense>
         </div>
       </div>
 
-      <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
+      <Suspense fallback={null}>
+        <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
+      </Suspense>
     </div>
   );
 }
