@@ -22,6 +22,11 @@ import { Audit } from './pages/Audit';
 import { Messaging } from './pages/Messaging';
 import { Settings } from './pages/Settings';
 import { ComponentLibrary } from './pages/ComponentLibrary';
+import { NeuralMapPage } from './pages/ui/NeuralMapPage';
+import { PrimitivesPage } from './pages/ui/PrimitivesPage';
+import { FeedbackPage } from './pages/ui/FeedbackPage';
+import { DataDisplayPage } from './pages/ui/DataDisplayPage';
+import { LayoutPage } from './pages/ui/LayoutPage';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 import { generateMockOverviewData } from './lib/mockData';
@@ -111,6 +116,12 @@ function Dashboard() {
         keysPressed = {};
       }
 
+      // g u => neural map page
+      if (keysPressed['g'] && keysPressed['u']) {
+        navigate('/ui/neural-map');
+        keysPressed = {};
+      }
+
       // g o => overview page
       if (keysPressed['g'] && keysPressed['o']) {
         navigate('/');
@@ -180,6 +191,11 @@ function Dashboard() {
     location.pathname === '/content' ? 'content' : 
     location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 
+    location.pathname === '/ui/neural-map' ? 'ui-neural' : 
+    location.pathname === '/ui/primitives' ? 'ui-primitives' : 
+    location.pathname === '/ui/feedback' ? 'ui-feedback' : 
+    location.pathname === '/ui/data-display' ? 'ui-data' : 
+    location.pathname === '/ui/layout' ? 'ui-layout' : 
     'overview';
 
   return (
@@ -234,10 +250,15 @@ function Dashboard() {
             <Route path="/messaging" element={<Messaging data={data} />} />
             <Route path="/tasks" element={<Tasks data={data} />} />
             <Route path="/clients" element={<Clients data={data} />} />
-            <Route path="/bots" element={<BotTeam data={data} />} />
+            <Route path="/bots" element={<BotTeam />} />
             <Route path="/content" element={<Content data={data} />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/library" element={<ComponentLibrary />} />
+            <Route path="/ui/neural-map" element={<NeuralMapPage />} />
+            <Route path="/ui/primitives" element={<PrimitivesPage />} />
+            <Route path="/ui/feedback" element={<FeedbackPage />} />
+            <Route path="/ui/data-display" element={<DataDisplayPage />} />
+            <Route path="/ui/layout" element={<LayoutPage />} />
           </Routes>
         </div>
       </div>

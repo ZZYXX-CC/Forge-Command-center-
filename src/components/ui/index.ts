@@ -7,3 +7,4 @@ export * from './Feedback';
 export * from './Alerts';
 export * from './Layout';
 export * from './ChartsAndOverlays';
+export { default as NeuralCommandMap } from './NeuralCommandMap';
