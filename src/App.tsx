@@ -210,9 +210,9 @@ function Dashboard() {
       <div className="flex flex-col flex-1 pt-12">
         <IncidentBanner data={data} />
         
-        <div className="flex flex-1 relative">
+        <div className="flex flex-1 relative min-w-0">
           {/* Left Rail - Desktop */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block shrink-0">
             <DomainNav data={data} activeId={activeNavId} />
           </div>
 

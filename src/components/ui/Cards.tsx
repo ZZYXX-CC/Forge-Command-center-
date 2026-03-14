@@ -110,7 +110,7 @@ export const StatRow = ({
   label: string; 
   value: React.ReactNode; 
   status?: 'healthy' | 'degraded' | 'incident' | 'info' | 'neutral';
-  className?: string;
+  className?: string; 
 }) => (
   <div className={cn("flex items-center justify-between py-2 border-b border-surface-border last:border-none", className)}>
     <div className="flex items-center gap-2">
@@ -119,6 +119,40 @@ export const StatRow = ({
     </div>
     <div className="text-label-xs font-mono text-text-primary">{value}</div>
   </div>
+);
+
+export const BentoCard = ({
+  title,
+  subtitle,
+  children,
+  className,
+  icon,
+  badge
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  className?: string;
+  icon?: string;
+  badge?: React.ReactNode;
+}) => (
+  <Card className={cn("flex flex-col group relative overflow-hidden", className)}>
+    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+      {icon && <ForgeIcon name={icon} size={80} />}
+    </div>
+    <div className="p-6 flex-1 flex flex-col">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-heading-md font-bold text-text-primary uppercase tracking-widest">{title}</h3>
+          {subtitle && <p className="text-label-xs text-text-muted mt-1 uppercase">{subtitle}</p>}
+        </div>
+        {badge}
+      </div>
+      <div className="flex-1">
+        {children}
+      </div>
+    </div>
+  </Card>
 );
 
 export const ExpandableRow = ({ 

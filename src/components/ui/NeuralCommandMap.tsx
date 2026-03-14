@@ -56,12 +56,26 @@ const Edge = ({
   const isReportsTo = rel.type === 'reports-to';
   const isRoutesVia = rel.type === 'routes-via';
 
-  const opacity = isHighlighted ? 1 : isDimmed ? 0.15 : (isReportsTo ? 0.2 : 0.4);
-  const strokeWidth = isHighlighted ? 2 : (isReportsTo ? 1 : 1.5);
+  const opacity = isHighlighted ? 1 : isDimmed ? 0.1 : (isReportsTo ? 0.15 : 0.3);
+  const strokeWidth = isHighlighted ? 2.5 : (isReportsTo ? 1 : 1.5);
   const color = isBlocked ? '#c95f5f' : (isHighlighted ? '#5fb87a' : '#1f2a1e');
 
   return (
-    <g style={{ opacity }} className="transition-opacity duration-300">
+    <g style={{ opacity }} className="transition-opacity duration-500">
+      {/* Glow Effect for Highlighted Edges */}
+      {isHighlighted && (
+        <motion.line
+          x1={fromPos.x}
+          y1={fromPos.y}
+          x2={toPos.x}
+          y2={toPos.y}
+          stroke={color}
+          strokeWidth={strokeWidth + 4}
+          strokeLinecap="round"
+          style={{ filter: 'blur(8px)', opacity: 0.3 }}
+        />
+      )}
+
       {/* Base Line */}
       <motion.line
         x1={fromPos.x}
@@ -70,37 +84,49 @@ const Edge = ({
         y2={toPos.y}
         stroke={color}
         strokeWidth={strokeWidth}
-        strokeDasharray={isBlocked ? "5,5" : "none"}
+        strokeDasharray={isBlocked ? "4,2" : "none"}
+        strokeLinecap="round"
       />
 
-      {/* Particles for Collaborates */}
-      {rel.type === 'collaborates' && !isBlocked && (
+      {/* Neural Pulse (Traveling Wave) */}
+      {!isBlocked && !isReportsTo && (
         <motion.circle
-          r={2}
-          fill="#5fb87a"
+          r={isHighlighted ? 3 : 1.5}
+          fill={isHighlighted ? "#5fb87a" : "#3d9960"}
           initial={{ offsetDistance: "0%" }}
           animate={{ offsetDistance: "100%" }}
           transition={{ 
-            duration: isHighlighted ? 1.5 : 3, 
+            duration: isHighlighted ? 2 : 4, 
             repeat: Infinity, 
-            ease: "linear" 
+            ease: "easeInOut",
+            delay: Math.random() * 5
           }}
-          style={{ offsetPath: `path('M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}')` }}
+          style={{ 
+            offsetPath: `path('M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}')`,
+            filter: isHighlighted ? 'blur(2px)' : 'none'
+          }}
         />
       )}
 
-      {/* Blocked Indicator */}
+      {/* Blocked Indicator (Firewall Style) */}
       {isBlocked && (
         <g transform={`translate(${(fromPos.x + toPos.x) / 2}, ${(fromPos.y + toPos.y) / 2})`}>
-          <circle r={10} fill="#0c0f0d" stroke="#c95f5f" strokeWidth={1} />
-          <Icon icon="solar:lock-bold" width={12} className="text-status-incident -translate-x-1.5 -translate-y-1.5" />
+          <motion.circle 
+            r={12} 
+            fill="#0c0f0d" 
+            stroke="#c95f5f" 
+            strokeWidth={1}
+            animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+          <Icon icon="solar:shield-cross-bold" width={14} className="text-status-incident -translate-x-1.75 -translate-y-1.75" />
         </g>
       )}
 
       {/* Arrow for Routes-via */}
       {isRoutesVia && (
         <motion.path
-          d={`M ${toPos.x} ${toPos.y} l -10 -5 l 0 10 z`}
+          d={`M ${toPos.x} ${toPos.y} l -8 -4 l 0 8 z`}
           fill={color}
           style={{ 
             rotate: Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * (180 / Math.PI),
@@ -120,7 +146,7 @@ const AgentNode = ({
   isDimmed,
   onHover,
   onClick,
-  onDrag
+  onDragEnd
 }: any) => {
   const size = TIER_SIZES[agent.tier] * (agent.id === 'miguel' ? 1.2 : 1);
   const statusColor = STATUS_COLORS[agent.status];
@@ -129,17 +155,18 @@ const AgentNode = ({
     <motion.g
       drag
       dragMomentum={false}
-      onDrag={(_, info) => onDrag(agent.id, info.point.x, info.point.y)}
+      dragElastic={0.1}
+      onDragEnd={(_, info) => onDragEnd(agent.id, info.offset.x, info.offset.y)}
       onMouseEnter={() => onHover(agent.id)}
       onMouseLeave={() => onHover(null)}
       onClick={(e) => { e.stopPropagation(); onClick(agent.id); }}
-      style={{ cursor: 'pointer', opacity: isDimmed ? 0.3 : 1 }}
-      className="transition-opacity duration-300"
+      style={{ cursor: 'grab', opacity: isDimmed ? 0.3 : 1 }}
+      className="transition-opacity duration-300 active:cursor-grabbing"
+      initial={false}
+      animate={{ x: pos.x, y: pos.y }}
     >
       {/* Ambient Breathing Glow */}
       <motion.circle
-        cx={pos.x}
-        cy={pos.y}
         r={size * 1.5}
         fill={statusColor}
         initial={{ opacity: 0.1 }}
@@ -148,32 +175,75 @@ const AgentNode = ({
         style={{ filter: 'blur(20px)' }}
       />
 
+      {/* Rotating Ring for Core Agents */}
+      {agent.tier === 'core' && (
+        <motion.circle
+          r={size + 8}
+          fill="none"
+          stroke={statusColor}
+          strokeWidth={1}
+          strokeDasharray="10,20"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          style={{ opacity: 0.3 }}
+        />
+      )}
+
       {/* Node Shape */}
       {agent.tier === 'pipeline' ? (
         <circle
-          cx={pos.x}
-          cy={pos.y}
           r={size}
           fill="#111410"
           stroke={statusColor}
           strokeWidth={1}
         />
       ) : (
-        <motion.path
-          d={`M ${pos.x} ${pos.y - size} L ${pos.x + size} ${pos.y - size/2} L ${pos.x + size} ${pos.y + size/2} L ${pos.x} ${pos.y + size} L ${pos.x - size} ${pos.y + size/2} L ${pos.x - size} ${pos.y - size/2} Z`}
-          fill="#111410"
-          stroke={isSelected ? "#5fb87a" : statusColor}
-          strokeWidth={isSelected ? 3 : 1.5}
-          animate={isSelected ? { scale: 1.1 } : { scale: 1 }}
-        />
+        <g>
+          {/* Outer Glow Ring */}
+          <motion.path
+            d={`M 0 ${-size-6} L ${size+6} 0 L 0 ${size+6} L ${-size-6} 0 Z`}
+            fill="none"
+            stroke={statusColor}
+            strokeWidth={0.5}
+            opacity={0.1}
+            animate={{ scale: [1, 1.1, 1], opacity: [0.05, 0.2, 0.05] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+          {/* Main Diamond Shape */}
+          <motion.path
+            d={`M 0 ${-size} L ${size} 0 L 0 ${size} L ${-size} 0 Z`}
+            fill="#111410"
+            stroke={isSelected ? "#5fb87a" : statusColor}
+            strokeWidth={isSelected ? 2.5 : 1.5}
+            animate={isSelected ? { scale: 1.1 } : { scale: 1 }}
+            className="drop-shadow-[0_0_15px_rgba(95,184,122,0.3)]"
+          />
+          {/* Tech Accents on Corners */}
+          <g opacity={0.6}>
+            <line x1={0} y1={-size-2} x2={0} y2={-size+4} stroke={statusColor} strokeWidth={1} />
+            <line x1={0} y1={size+2} x2={0} y2={size-4} stroke={statusColor} strokeWidth={1} />
+            <line x1={-size-2} y1={0} x2={-size+4} y2={0} stroke={statusColor} strokeWidth={1} />
+            <line x1={size+2} y1={0} x2={size-4} y2={0} stroke={statusColor} strokeWidth={1} />
+          </g>
+        </g>
+      )}
+
+      {/* Inner Glass Highlight */}
+      {agent.tier !== 'pipeline' && (
+        <g pointerEvents="none">
+          <path
+            d={`M 0 ${-size + 5} L ${size - 5} 0 L 0 ${size - 5} L ${-size + 5} 0 Z`}
+            fill="url(#glassGradient)"
+            opacity={0.15}
+          />
+        </g>
       )}
 
       {/* Content */}
       {agent.tier !== 'pipeline' && (
         <g pointerEvents="none">
           <text
-            x={pos.x}
-            y={pos.y - 5}
+            y={-5}
             textAnchor="middle"
             fill="#e8e6e1"
             className="text-[14px] font-bold font-ui uppercase tracking-tighter"
@@ -181,8 +251,7 @@ const AgentNode = ({
             {agent.name}
           </text>
           <text
-            x={pos.x}
-            y={pos.y + 15}
+            y={15}
             textAnchor="middle"
             fill="#9a9890"
             className="text-[8px] font-mono uppercase opacity-60"
@@ -190,8 +259,7 @@ const AgentNode = ({
             {agent.model}
           </text>
           <text
-            x={pos.x}
-            y={pos.y - 25}
+            y={-25}
             textAnchor="middle"
             className="text-[16px]"
           >
@@ -210,18 +278,18 @@ const AgentNode = ({
             pointerEvents="none"
           >
             <rect
-              x={pos.x - 60}
-              y={pos.y - size - 45}
+              x={-60}
+              y={-size - 45}
               width={120}
               height={35}
               rx={4}
               fill="#161b14"
               stroke="#1f2a1e"
             />
-            <text x={pos.x} y={pos.y - size - 30} textAnchor="middle" fill="#e8e6e1" className="text-[10px] font-bold">
+            <text y={-size - 30} textAnchor="middle" fill="#e8e6e1" className="text-[10px] font-bold">
               {agent.name}
             </text>
-            <text x={pos.x} y={pos.y - size - 18} textAnchor="middle" fill="#7ec99a" className="text-[8px] font-mono">
+            <text y={-size - 18} textAnchor="middle" fill="#7ec99a" className="text-[8px] font-mono">
               {agent.status.toUpperCase()} • {agent.lastHeartbeat}
             </text>
           </motion.g>
@@ -237,12 +305,77 @@ export const NeuralCommandMap: React.FC = () => {
   const [positions, setPositions] = useState(INITIAL_POSITIONS);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<'map' | 'roster'>('map');
+  const [view, setView] = useState<'map' | 'roster' | 'chat'>('map');
+  const [activeChannel, setActiveChannel] = useState<string>('network');
+  const [isTyping, setIsTyping] = useState(false);
+  const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [showBlockedPolicy, setShowBlockedPolicy] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [messages, setMessages] = useState<Record<string, Array<{ id: string; sender: string; text: string; time: string; isAgent: boolean }>>>({
+    network: [
+      { id: '1', sender: 'MIGUEL', text: 'Neural network stable. All agents reporting nominal status.', time: '13:45', isAgent: true },
+      { id: '2', sender: 'VAEL', text: 'Security audit complete. No breaches detected.', time: '13:48', isAgent: true },
+    ],
+    miguel: [
+      { id: 'm1', sender: 'MIGUEL', text: 'Operator, I am standing by for strategic directives.', time: '12:00', isAgent: true }
+    ]
+  });
   const containerRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (view === 'chat' && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [view, messages, activeChannel]);
+
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return;
+    const channel = activeChannel;
+    const newMsg = {
+      id: Date.now().toString(),
+      sender: 'OPERATOR',
+      text: chatInput,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isAgent: false
+    };
+    
+    setMessages(prev => ({
+      ...prev,
+      [channel]: [...(prev[channel] || []), newMsg]
+    }));
+    setChatInput('');
+    setIsTyping(true);
+
+    // Mock response
+    setTimeout(() => {
+      const senderName = channel === 'network' ? 'MIGUEL' : AGENTS.find(a => a.id === channel)?.name || 'SYSTEM';
+      const response = {
+        id: (Date.now() + 1).toString(),
+        sender: senderName,
+        text: channel === 'network' ? 'Acknowledged. Broadcasting to all nodes.' : `Direct directive received. Executing ${chatInput.split(' ')[0]}...`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isAgent: true
+      };
+      setMessages(prev => ({
+        ...prev,
+        [channel]: [...(prev[channel] || []), response]
+      }));
+      setIsTyping(false);
+    }, 1500);
+  };
+
+  // Handle window resize to prevent "not responding" feel if layout shifts
+  useEffect(() => {
+    const handleResize = () => {
+      // Force a re-render if needed or just ensure layout is stable
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -271,9 +404,17 @@ export const NeuralCommandMap: React.FC = () => {
 
   const selectedAgent = useMemo(() => AGENTS.find(a => a.id === selectedId), [selectedId]);
 
-  const handleDrag = (id: string, x: number, y: number) => {
-    // In a real app, we'd convert screen coords to SVG coords
-    // For now, let's just keep them static or implement a basic offset
+  const handleDragEnd = (id: string, offsetX: number, offsetY: number) => {
+    setPositions(prev => {
+      const current = prev[id];
+      // Contain within 0-1000 viewBox
+      const newX = Math.min(Math.max(current.x + offsetX / zoom, 50), 950);
+      const newY = Math.min(Math.max(current.y + offsetY / zoom, 50), 950);
+      return {
+        ...prev,
+        [id]: { x: newX, y: newY }
+      };
+    });
   };
 
   const resetView = () => {
@@ -296,41 +437,52 @@ export const NeuralCommandMap: React.FC = () => {
   }, [hoveredId]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-surface-base relative overflow-hidden font-ui">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-surface-base relative overflow-hidden font-ui">
       {/* Header */}
-      <header className="px-6 py-4 border-b border-surface-border flex items-center justify-between z-20 bg-surface-base/80 backdrop-blur-md">
-        <div>
-          <h1 className="text-text-primary font-bold tracking-widest text-label-md uppercase">Team Overview</h1>
-          <div className="text-text-muted text-[10px] flex gap-2 mt-0.5">
+      <header className="px-4 sm:px-6 py-4 border-b border-surface-border flex items-center justify-between z-20 bg-surface-base/80 backdrop-blur-md shrink-0 gap-4">
+        <div className="min-w-0">
+          <h1 className="text-text-primary font-bold tracking-widest text-label-md uppercase truncate">Team Overview</h1>
+          <div className="text-text-muted text-[10px] flex gap-2 mt-0.5 whitespace-nowrap overflow-hidden">
             <span>12 AGENTS</span>
-            <span>•</span>
-            <span>5 CORE</span>
-            <span>•</span>
-            <span>1 SUPPORT</span>
-            <span>•</span>
-            <span>6 PIPELINE</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">5 CORE</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex bg-surface-raised p-1 rounded-md border border-surface-border">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex bg-surface-raised p-0.5 sm:p-1 rounded-md border border-surface-border shrink-0">
             <button 
               onClick={() => setView('map')}
               className={cn(
-                "px-3 py-1 text-[10px] font-bold rounded transition-colors",
+                "px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold rounded transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap",
                 view === 'map' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
               )}
             >
-              NEURAL MAP
+              <Icon icon="solar:graph-new-bold-duotone" width={14} />
+              <span className="hidden xs:inline">MAP</span>
+              <span className="xs:hidden">MAP</span>
             </button>
             <button 
               onClick={() => setView('roster')}
               className={cn(
-                "px-3 py-1 text-[10px] font-bold rounded transition-colors",
+                "px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold rounded transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap",
                 view === 'roster' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
               )}
             >
-              ROSTER
+              <Icon icon="solar:clipboard-list-bold-duotone" width={14} />
+              <span className="hidden xs:inline">ROSTER</span>
+              <span className="xs:hidden">LIST</span>
+            </button>
+            <button 
+              onClick={() => setView('chat')}
+              className={cn(
+                "px-2 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold rounded transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap",
+                view === 'chat' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
+              )}
+            >
+              <Icon icon="solar:chat-round-dots-bold-duotone" width={14} />
+              <span className="hidden xs:inline">CHAT</span>
+              <span className="xs:hidden">CHAT</span>
             </button>
           </div>
           <button 
@@ -343,17 +495,42 @@ export const NeuralCommandMap: React.FC = () => {
         </div>
       </header>
 
-      {/* Status Strip */}
-      <div className="px-6 py-2 border-b border-surface-border flex gap-8 z-20 bg-surface-base/50">
-        {AGENTS.filter(a => a.tier !== 'pipeline').map(agent => (
-          <div key={agent.id} className="flex items-center gap-2">
-            <div className={cn("w-1.5 h-1.5 rounded-full", `bg-[${STATUS_COLORS[agent.status]}]`)} style={{ backgroundColor: STATUS_COLORS[agent.status] }} />
-            <span className="text-[9px] font-mono text-text-secondary uppercase">{agent.name}</span>
-          </div>
-        ))}
-      </div>
+      {/* Status Strip - Only visible in Chat View */}
+      {view === 'chat' && (
+        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between z-20 bg-surface-base/50 overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex gap-8 shrink-0">
+            {/* Neural Network Channel */}
+            <div 
+              className={cn(
+                "flex items-center gap-3 group cursor-pointer border-r border-surface-border pr-8",
+                activeChannel === 'network' ? "text-emerald-accent" : "text-text-secondary"
+              )} 
+              onClick={() => setActiveChannel('network')}
+            >
+              <div className={cn("w-2 h-2 rounded-full animate-pulse bg-emerald-accent")} />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold uppercase group-hover:text-emerald-accent transition-colors leading-none">Neural Network</span>
+                <span className="text-[8px] font-mono uppercase tracking-tighter mt-0.5 opacity-70">Broadcast</span>
+              </div>
+            </div>
 
-      <div className="flex-1 relative flex min-h-0">
+            {/* Individual Agents */}
+            {AGENTS.filter(a => a.tier !== 'pipeline').map(agent => (
+              <div key={agent.id} className="flex items-center gap-3 group cursor-pointer" onClick={() => setActiveChannel(agent.id)}>
+                <div className={cn("w-2 h-2 rounded-full animate-pulse", `bg-[${STATUS_COLORS[agent.status]}]`)} style={{ backgroundColor: STATUS_COLORS[agent.status] }} />
+                <div className="flex flex-col">
+                  <span className={cn("text-[10px] font-bold uppercase group-hover:text-emerald-accent transition-colors leading-none", activeChannel === agent.id ? "text-emerald-accent" : "text-text-secondary")}>{agent.name}</span>
+                  <span className={cn("text-[8px] font-mono uppercase tracking-tighter mt-0.5")} style={{ color: STATUS_COLORS[agent.status] }}>
+                    {agent.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 relative flex min-h-0 min-w-0">
         <AnimatePresence mode="wait">
           {view === 'map' ? (
             <motion.div 
@@ -380,6 +557,20 @@ export const NeuralCommandMap: React.FC = () => {
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseUp}
               >
+                <defs>
+                  <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+
                 <motion.g
                   animate={{ 
                     x: pan.x, 
@@ -389,6 +580,24 @@ export const NeuralCommandMap: React.FC = () => {
                   transition={{ type: 'spring', damping: 30, stiffness: 200 }}
                   style={{ transformOrigin: 'center' }}
                 >
+                  {/* Background Neural Noise */}
+                  <g opacity={0.1}>
+                    {[...Array(5)].map((_, i) => (
+                      <motion.path
+                        key={i}
+                        d={`M ${100 + i * 200} 0 Q ${500} ${500} ${900 - i * 200} 1000`}
+                        fill="none"
+                        stroke="#5fb87a"
+                        strokeWidth={0.5}
+                        animate={{
+                          opacity: [0.1, 0.3, 0.1],
+                          pathLength: [0, 1, 0],
+                        }}
+                        transition={{ duration: 10 + i * 2, repeat: Infinity, ease: "linear" }}
+                      />
+                    ))}
+                  </g>
+
                   {/* Relationship Edges */}
                   <g>
                     {RELATIONSHIPS.map((rel, idx) => {
@@ -444,7 +653,7 @@ export const NeuralCommandMap: React.FC = () => {
                         isDimmed={!!hoveredId && !connectedIds.has(agent.id)}
                         onHover={setHoveredId}
                         onClick={setSelectedId}
-                        onDrag={handleDrag}
+                        onDragEnd={handleDragEnd}
                       />
                     ))}
                   </g>
@@ -477,7 +686,7 @@ export const NeuralCommandMap: React.FC = () => {
                 )}
               </AnimatePresence>
             </motion.div>
-          ) : (
+          ) : view === 'roster' ? (
             <motion.div 
               key="roster"
               initial={{ opacity: 0, x: 20 }}
@@ -520,6 +729,205 @@ export const NeuralCommandMap: React.FC = () => {
                 </div>
               ))}
             </motion.div>
+          ) : (
+            <motion.div
+              key="chat"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex-1 flex flex-col min-h-0 bg-surface-base relative"
+            >
+              {/* Chat Sidebar - Bot Intelligence Tools */}
+              <AnimatePresence>
+                {(showChatSidebar || true) && (
+                  <motion.div 
+                    initial={false}
+                    animate={{ x: 0 }}
+                    className={cn(
+                      "absolute left-0 top-0 bottom-0 w-64 border-r border-surface-border bg-surface-raised z-30 flex flex-col shrink-0 transition-transform duration-300 lg:translate-x-0",
+                      !showChatSidebar && "-translate-x-full lg:translate-x-0"
+                    )}
+                  >
+                    <div className="p-4 border-b border-surface-border flex items-center justify-between">
+                      <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Intelligence Tools</h3>
+                      <button onClick={() => setShowChatSidebar(false)} className="lg:hidden p-1 text-text-muted hover:text-text-primary">
+                        <Icon icon="solar:close-circle-bold-duotone" width={18} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar">
+                      {activeChannel !== 'network' ? (
+                        <div className="px-2 py-2">
+                          <div className="flex items-center gap-3 p-3 mb-4 bg-surface-base border border-surface-border rounded-xl">
+                            <div className="text-2xl">{AGENTS.find(a => a.id === activeChannel)?.emoji}</div>
+                            <div className="min-w-0">
+                              <div className="text-label-sm font-bold text-text-primary truncate">{AGENTS.find(a => a.id === activeChannel)?.name}</div>
+                              <div className="text-[9px] font-mono text-text-muted truncate uppercase">{AGENTS.find(a => a.id === activeChannel)?.role}</div>
+                            </div>
+                          </div>
+
+                          <h3 className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Bot Internals</h3>
+                          <div className="space-y-1">
+                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
+                              <Icon icon="solar:document-text-bold-duotone" width={16} className="text-emerald-accent" />
+                              <span className="text-label-sm font-medium">Open Logs</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
+                              <Icon icon="solar:cpu-bold-duotone" width={16} className="text-emerald-accent" />
+                              <span className="text-label-sm font-medium">Memory Browser</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
+                              <Icon icon="solar:calendar-bold-duotone" width={16} className="text-emerald-accent" />
+                              <span className="text-label-sm font-medium">Schedules</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
+                              <Icon icon="solar:settings-bold-duotone" width={16} className="text-emerald-accent" />
+                              <span className="text-label-sm font-medium">Bot Configuration</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-6 text-center">
+                          <Icon icon="solar:users-group-two-rounded-bold-duotone" width={32} className="mx-auto text-text-muted mb-4 opacity-20" />
+                          <p className="text-[10px] text-text-muted uppercase tracking-widest leading-relaxed">
+                            Neural Network Broadcast Mode Active. Select an agent to access internal tools.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Mobile Sidebar Overlay */}
+              {showChatSidebar && (
+                <div 
+                  className="absolute inset-0 bg-black/50 z-20 lg:hidden" 
+                  onClick={() => setShowChatSidebar(false)}
+                />
+              )}
+
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 lg:ml-64">
+                {/* Chat Header */}
+                <div className="px-4 sm:px-6 py-3 border-b border-surface-border bg-surface-raised/20 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button 
+                      onClick={() => setShowChatSidebar(true)}
+                      className="lg:hidden p-2 -ml-2 text-text-muted hover:text-text-primary"
+                    >
+                      <Icon icon="solar:hamburger-menu-bold-duotone" width={20} />
+                    </button>
+                    <div className="text-xl shrink-0">
+                      {activeChannel === 'network' ? <Icon icon="solar:users-group-two-rounded-bold-duotone" className="text-emerald-accent" /> : AGENTS.find(a => a.id === activeChannel)?.emoji}
+                    </div>
+                    <div 
+                      className="min-w-0 cursor-pointer group"
+                      onClick={() => activeChannel !== 'network' && setSelectedId(activeChannel)}
+                    >
+                      <h3 className="text-label-md font-bold text-text-primary uppercase tracking-wider truncate group-hover:text-emerald-accent transition-colors">
+                        {activeChannel === 'network' ? 'Neural Network' : AGENTS.find(a => a.id === activeChannel)?.name}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: activeChannel === 'network' ? STATUS_COLORS.healthy : STATUS_COLORS[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'] }} />
+                        <span className="text-[9px] font-mono uppercase tracking-tighter truncate" style={{ color: activeChannel === 'network' ? STATUS_COLORS.healthy : STATUS_COLORS[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'] }}>
+                          {activeChannel === 'network' ? 'Operational' : AGENTS.find(a => a.id === activeChannel)?.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+                    {activeChannel !== 'network' && (
+                      <div className="flex items-center gap-6 mr-2">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Runtime + Cost</span>
+                          <span className="text-[9px] text-text-mono font-mono mt-0.5">42h / $0.12</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Heartbeat</span>
+                          <span className="text-[9px] text-text-mono font-mono mt-0.5">14s ago</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <button className="hidden sm:block p-2 text-text-muted hover:text-text-primary transition-colors"><Icon icon="solar:videocamera-record-bold-duotone" width={18} /></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+                  {(messages[activeChannel] || []).map((msg) => (
+                    <div key={msg.id} className={cn("flex flex-col max-w-[85%]", msg.isAgent ? "self-start" : "self-end items-end")}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", msg.isAgent ? "text-emerald-accent" : "text-text-muted")}>
+                          {msg.sender}
+                        </span>
+                        <span className="text-[8px] text-text-muted font-mono">{msg.time}</span>
+                      </div>
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          "p-4 rounded-2xl text-label-sm leading-relaxed shadow-sm",
+                          msg.isAgent 
+                            ? "bg-surface-raised border border-surface-border text-text-primary rounded-tl-none" 
+                            : "bg-emerald-accent text-surface-base font-medium rounded-tr-none"
+                        )}
+                      >
+                        {msg.text}
+                      </motion.div>
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="self-start flex flex-col">
+                      <div className="text-[10px] font-bold text-emerald-accent uppercase tracking-widest mb-1.5">
+                        {activeChannel === 'network' ? 'MIGUEL' : AGENTS.find(a => a.id === activeChannel)?.name} is typing...
+                      </div>
+                      <div className="flex gap-1 p-2 bg-surface-raised rounded-lg border border-surface-border">
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 rounded-full bg-emerald-accent" />
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-emerald-accent" />
+                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-emerald-accent" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Quick Actions */}
+                <div className="px-6 py-2 flex gap-2 overflow-x-auto no-scrollbar border-t border-surface-border/50">
+                  {['Status Report', 'Run Diagnostics', 'Sync Neural Map', 'Clear Logs'].map(action => (
+                    <button 
+                      key={action}
+                      onClick={() => setChatInput(action)}
+                      className="whitespace-nowrap px-3 py-1 bg-surface-raised border border-surface-border rounded-full text-[9px] font-bold text-text-muted hover:text-emerald-accent hover:border-emerald-accent/50 transition-all"
+                    >
+                      {action.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-6 border-t border-surface-border bg-surface-raised/50">
+                  <div className="flex gap-3 max-w-4xl mx-auto relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
+                      <button className="text-text-muted hover:text-emerald-accent"><Icon icon="solar:paperclip-bold-duotone" width={18} /></button>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder={`Message ${activeChannel === 'network' ? 'Neural Network' : AGENTS.find(a => a.id === activeChannel)?.name}...`}
+                      className="flex-1 bg-surface-base border border-surface-border rounded-xl pl-12 pr-5 py-3 text-text-primary text-label-sm focus:outline-none focus:border-emerald-accent focus:ring-1 focus:ring-emerald-accent/20 transition-all"
+                    />
+                    <button 
+                      onClick={handleSendMessage}
+                      className="px-6 bg-emerald-accent text-surface-base rounded-xl font-bold text-label-sm hover:bg-emerald-mid transition-all flex items-center gap-2 shadow-lg shadow-emerald-accent/10 active:scale-95"
+                    >
+                      <Icon icon="solar:send-bold-duotone" width={18} />
+                      SEND
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -531,7 +939,7 @@ export const NeuralCommandMap: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute top-0 right-0 bottom-0 w-[320px] bg-surface-overlay border-l border-surface-border shadow-raised z-30 flex flex-col"
+              className="absolute top-0 right-0 bottom-0 w-full sm:w-[320px] bg-surface-overlay border-l border-surface-border shadow-raised z-30 flex flex-col"
             >
               <div className="p-6 flex-1 overflow-y-auto space-y-8">
                 <div className="flex items-start justify-between">

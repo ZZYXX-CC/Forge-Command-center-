@@ -88,24 +88,35 @@ export const Modal = ({
   onClose, 
   title, 
   children,
-  className 
+  className,
+  size = 'md'
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   title: string; 
   children: React.ReactNode;
   className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }) => {
   if (!isOpen) return null;
+
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-2xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl',
+    full: 'max-w-[95vw] h-[95vh]',
+  };
 
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-surface-base/90 backdrop-blur-md" onClick={onClose} />
       <div className={cn(
-        "relative w-full max-w-2xl bg-surface-overlay border border-surface-border rounded-xl shadow-raised flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200",
+        "relative w-full bg-surface-overlay border border-surface-border rounded-xl shadow-raised flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200",
+        sizes[size],
         className
       )}>
-        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between shrink-0">
           <h3 className="text-heading-md font-bold uppercase tracking-widest text-text-primary">{title}</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
             <ForgeIcon name="close-circle" size={20} />
@@ -145,6 +156,47 @@ export const Drawer = ({
         side === 'left' && "mr-auto border-l-0 border-r slide-in-from-left",
         className
       )}>
+        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between">
+          <h3 className="text-heading-md font-bold uppercase tracking-widest text-text-primary">{title}</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+            <ForgeIcon name="close-circle" size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- BottomDrawer ---
+export const BottomDrawer = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children,
+  fullHeight = false,
+  className 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  title: string; 
+  children: React.ReactNode;
+  fullHeight?: boolean;
+  className?: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[400] flex items-end">
+      <div className="absolute inset-0 bg-surface-base/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={cn(
+        "relative w-full bg-surface-overlay border-t border-surface-border shadow-raised flex flex-col animate-in slide-in-from-bottom duration-300 rounded-t-2xl",
+        fullHeight ? "h-[90vh]" : "max-h-[70vh]",
+        className
+      )}>
+        <div className="w-12 h-1.5 bg-surface-border rounded-full mx-auto mt-3 mb-1 shrink-0" />
         <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between">
           <h3 className="text-heading-md font-bold uppercase tracking-widest text-text-primary">{title}</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">

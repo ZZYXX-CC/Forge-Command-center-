@@ -102,10 +102,12 @@ export const Spinner = ({
 export const ProgressBar = ({ 
   progress, 
   status = 'info',
+  label,
   className 
 }: { 
   progress: number; 
   status?: 'info' | 'success' | 'error' | 'warning';
+  label?: string;
   className?: string;
 }) => {
   const colors = {
@@ -116,11 +118,19 @@ export const ProgressBar = ({
   };
 
   return (
-    <div className={cn("w-full h-1 bg-surface-border rounded-full overflow-hidden", className)}>
-      <div 
-        className={cn("h-full transition-all duration-500", colors[status])}
-        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-      />
+    <div className={cn("w-full space-y-1.5", className)}>
+      {label && (
+        <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest">
+          <span className="text-text-secondary">{label}</span>
+          <span className="text-text-primary">{Math.round(progress)}%</span>
+        </div>
+      )}
+      <div className="w-full h-1 bg-surface-border rounded-full overflow-hidden">
+        <div 
+          className={cn("h-full transition-all duration-500", colors[status])}
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      </div>
     </div>
   );
 };
@@ -147,3 +157,86 @@ export const PulsingDot = ({
     </div>
   );
 };
+
+// --- Toast ---
+export const Toast = ({ 
+  message, 
+  status = 'info', 
+  onClose,
+  className 
+}: { 
+  message: string; 
+  status?: 'success' | 'warning' | 'error' | 'info';
+  onClose?: () => void;
+  className?: string;
+}) => {
+  const statusStyles = {
+    success: 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy',
+    warning: 'border-status-degraded/30 bg-status-degraded/10 text-status-degraded',
+    error: 'border-status-incident/30 bg-status-incident/10 text-status-incident',
+    info: 'border-status-info/30 bg-status-info/10 text-status-info',
+  };
+
+  const icons = {
+    success: 'check-circle',
+    warning: 'shield-warning',
+    error: 'fire',
+    info: 'info-circle',
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-3 px-4 py-3 rounded-lg border backdrop-blur-md shadow-raised animate-in slide-in-from-right-full duration-300",
+      statusStyles[status],
+      className
+    )}>
+      <ForgeIcon name={icons[status]} size={18} />
+      <span className="text-label-sm font-bold uppercase tracking-wider flex-1">{message}</span>
+      {onClose && (
+        <button onClick={onClose} className="opacity-50 hover:opacity-100 transition-opacity">
+          <ForgeIcon name="close-circle" size={16} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+// --- Notification ---
+export const Notification = ({ 
+  title, 
+  message, 
+  timestamp,
+  icon = 'info-circle',
+  unread = false,
+  className 
+}: { 
+  title: string; 
+  message: string; 
+  timestamp?: string;
+  icon?: string;
+  unread?: boolean;
+  className?: string;
+}) => (
+  <div className={cn(
+    "p-4 rounded-xl border border-surface-border bg-surface-raised/50 hover:bg-surface-hover transition-all group relative",
+    unread && "border-emerald-accent/30 bg-emerald-accent/5",
+    className
+  )}>
+    {unread && <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-emerald-accent animate-pulse" />}
+    <div className="flex gap-4">
+      <div className={cn(
+        "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-surface-border bg-surface-base",
+        unread && "border-emerald-accent/20"
+      )}>
+        <ForgeIcon name={icon} size={20} className={unread ? "text-emerald-accent" : "text-text-muted"} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h4 className="text-label-sm font-bold text-text-primary uppercase tracking-wider truncate">{title}</h4>
+          {timestamp && <span className="text-[9px] font-mono text-text-muted uppercase">{timestamp}</span>}
+        </div>
+        <p className="text-body-sm text-text-secondary line-clamp-2">{message}</p>
+      </div>
+    </div>
+  </div>
+);

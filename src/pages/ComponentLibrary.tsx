@@ -44,14 +44,34 @@ import {
   UptimeStrip,
   Modal,
   Drawer,
-  Tooltip
+  BottomDrawer,
+  LogViewer,
+  BentoCard,
+  Tooltip,
+  Tabs,
+  Accordion,
+  EmptyState,
+  Toast,
+  Notification,
+  Breadcrumbs,
+  Stepper
 } from '@/src/components/ui';
 
 export const ComponentLibrary: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalSize, setModalSize] = useState<'sm' | 'md' | 'lg' | 'xl' | 'full'>('md');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isBottomDrawerOpen, setIsBottomDrawerOpen] = useState(false);
+  const [isFullBottomDrawerOpen, setIsFullBottomDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const [toggle, setToggle] = useState(true);
   const [check, setCheck] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+
+  const openModal = (size: typeof modalSize) => {
+    setModalSize(size);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-base overflow-y-auto pb-20">
@@ -61,7 +81,7 @@ export const ComponentLibrary: React.FC = () => {
         icon="layers"
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>Open Modal</Button>
+            <Button variant="outline" size="sm" onClick={() => openModal('md')}>Open Modal</Button>
             <Button variant="primary" size="sm" onClick={() => setIsDrawerOpen(true)}>Open Drawer</Button>
           </div>
         }
@@ -140,29 +160,29 @@ export const ComponentLibrary: React.FC = () => {
           </div>
         </section>
 
-        {/* Inputs */}
+        {/* Overlays Section */}
         <section>
-          <SectionDivider label="Inputs" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <TextInput label="Service Name" placeholder="e.g. auth-api" icon="box" />
-            <SearchInput placeholder="Search logs..." />
-            <Select 
-              label="Environment" 
-              options={[
-                { value: 'prod', label: 'Production' },
-                { value: 'stage', label: 'Staging' }
-              ]} 
-            />
-            <div className="flex flex-col gap-4">
-              <Toggle checked={toggle} onChange={setToggle} label="Enable Auto-Scaling" />
-              <Checkbox checked={check} onChange={setCheck} label="Confirm Deployment" />
-            </div>
+          <SectionDivider label="Overlays & Drawers" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button variant="outline" onClick={() => openModal('sm')}>Small Modal</Button>
+            <Button variant="outline" onClick={() => openModal('lg')}>Large Modal</Button>
+            <Button variant="outline" onClick={() => openModal('full')}>Full Page Modal</Button>
+            <Button variant="secondary" onClick={() => setIsBottomDrawerOpen(true)}>Bottom Drawer</Button>
+            <Button variant="primary" onClick={() => setIsFullBottomDrawerOpen(true)}>Full Bottom Drawer</Button>
+          </div>
+        </section>
+
+        {/* Logs Section */}
+        <section>
+          <SectionDivider label="System Monitoring" />
+          <div className="grid grid-cols-1 gap-6">
+            <LogViewer simulateInput className="h-[400px]" />
           </div>
         </section>
 
         {/* Cards */}
         <section>
-          <SectionDivider label="Cards & KPIs" />
+          <SectionDivider label="Cards & Layouts" />
           <MetricGrid cols={4}>
             <KPICard label="Uptime 24H" value="99.98%" delta={0.02} status="healthy" icon="pulse" />
             <KPICard label="Active Sessions" value="12.4k" delta={14} status="info" icon="users-group-two-rounded" />
@@ -170,45 +190,177 @@ export const ComponentLibrary: React.FC = () => {
             <KPICard label="Latency p95" value="142ms" delta={8} status="degraded" icon="bolt" />
           </MetricGrid>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            <BentoCard 
+              title="Global Intelligence" 
+              subtitle="Real-time network analysis"
+              icon="global"
+              className="lg:col-span-2"
+              badge={<Badge variant="emerald">Live</Badge>}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="space-y-4">
+                  <p className="text-body-sm text-text-secondary">
+                    The neural core is currently processing 14.2k requests per second across 12 regions. 
+                    Latency remains within optimal thresholds.
+                  </p>
+                  <div className="flex gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted uppercase">Throughput</span>
+                      <span className="text-heading-md font-mono text-emerald-accent">1.2 GB/s</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted uppercase">Nodes</span>
+                      <span className="text-heading-md font-mono text-text-primary">128/128</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-surface-base/50 rounded-lg p-4 border border-surface-border">
+                  <Label className="mb-3">Regional Load</Label>
+                  <div className="space-y-2">
+                    <ProgressBar progress={82} label="US-EAST" />
+                    <ProgressBar progress={45} label="EU-WEST" />
+                    <ProgressBar progress={12} label="AP-SOUTH" />
+                  </div>
+                </div>
+              </div>
+            </BentoCard>
+
             <Card>
-              <CardHeader title="System Configuration" subtitle="Last modified by a.chen" icon="settings" />
-              <div className="p-4 space-y-1">
+              <CardHeader title="System Health" icon="shield-check" />
+              <div className="p-4 space-y-2">
                 <HealthStrip label="API Gateway" status="healthy" value="v2.4.1" />
                 <HealthStrip label="Auth Service" status="degraded" value="v2.3.9" />
                 <HealthStrip label="Database" status="healthy" value="Primary" />
+                <HealthStrip label="Neural Core" status="healthy" value="v1.0.0" />
               </div>
               <CardFooter>
-                <Button variant="ghost" size="xs" className="w-full">View Full Config</Button>
+                <Button variant="ghost" size="xs" className="w-full">Run Diagnostics</Button>
               </CardFooter>
             </Card>
+          </div>
+        </section>
 
-            <Card variant="overlay">
-              <CardHeader title="Recent Activity" icon="clipboard-list" />
-              <div className="divide-y divide-surface-border">
-                <div className="p-4 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-label-xs font-bold text-text-primary">Deployment Successful</span>
-                    <span className="text-[9px] text-text-muted uppercase">auth-api • v2.4.1</span>
-                  </div>
-                  <MonoText color="muted" className="text-[10px]">2m ago</MonoText>
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-label-xs font-bold text-text-primary">Config Updated</span>
-                    <span className="text-[9px] text-text-muted uppercase">trading-engine • scaling_factor</span>
-                  </div>
-                  <MonoText color="muted" className="text-[10px]">15m ago</MonoText>
-                </div>
+        {/* Navigation & Structure */}
+        <section>
+          <SectionDivider label="Navigation & Structure" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <Label>Breadcrumbs</Label>
+              <Breadcrumbs 
+                items={[
+                  { label: 'System', icon: 'settings' },
+                  { label: 'Intelligence', icon: 'cpu' },
+                  { label: 'Neural Core', icon: 'graph-new' },
+                  { label: 'Config' },
+                ]}
+              />
+              
+              <Label className="block mt-8">Tabs System</Label>
+              <Tabs 
+                tabs={[
+                  { id: 'overview', label: 'Overview', icon: 'home-smile' },
+                  { id: 'analytics', label: 'Analytics', icon: 'graph-new' },
+                  { id: 'security', label: 'Security', icon: 'shield-check' },
+                  { id: 'logs', label: 'Logs', icon: 'document-text' },
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+              />
+              <div className="p-4 rounded-lg border border-surface-border bg-surface-raised/30 min-h-[100px] flex items-center justify-center">
+                <span className="text-label-md text-text-muted uppercase tracking-widest">Active View: {activeTab}</span>
               </div>
-            </Card>
+            </div>
+
+            <div className="space-y-8">
+              <Label>Stepper System</Label>
+              <Stepper 
+                currentStep={1}
+                steps={[
+                  { label: 'Initialize', description: 'Booting neural core' },
+                  { label: 'Syncing', description: 'Replicating data' },
+                  { label: 'Validate', description: 'Running integrity checks' },
+                  { label: 'Deploy', description: 'Going live' },
+                ]}
+              />
+
+              <Label className="block mt-8">Accordion System</Label>
+              <Accordion 
+                items={[
+                  { 
+                    id: '1', 
+                    title: 'Network Configuration', 
+                    icon: 'global',
+                    content: 'Global routing tables and edge node configurations are managed here. Changes propagate within 300ms.' 
+                  },
+                  { 
+                    id: '2', 
+                    title: 'Security Protocols', 
+                    icon: 'shield-warning',
+                    content: 'Active firewall rules and intrusion detection systems. Current threat level: LOW.' 
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Empty States */}
+        <section>
+          <SectionDivider label="Empty States" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <EmptyState 
+              title="No Active Incidents" 
+              description="All systems are operating within normal parameters. No critical issues detected in the last 24 hours."
+              icon="check-circle"
+              action={<Button variant="outline" size="sm">View History</Button>}
+            />
+            <EmptyState 
+              title="No Search Results" 
+              description="We couldn't find any audit logs matching your current filter criteria. Try adjusting your search parameters."
+              icon="magnifer"
+              action={<Button variant="secondary" size="sm">Clear Filters</Button>}
+            />
           </div>
         </section>
 
         {/* Feedback & Alerts */}
         <section>
           <SectionDivider label="Feedback & Alerts" />
-          <div className="space-y-4">
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              <Button variant="outline" size="sm" onClick={() => setShowToast(true)}>Trigger Toast</Button>
+              {showToast && (
+                <Toast 
+                  message="System configuration updated successfully" 
+                  status="success" 
+                  onClose={() => setShowToast(false)} 
+                />
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Notification 
+                title="Security Alert" 
+                message="New login detected from an unrecognized IP address in Singapore. Please verify if this was you."
+                timestamp="2m ago"
+                icon="shield-warning"
+                unread
+              />
+              <Notification 
+                title="Deployment Success" 
+                message="Neural Core v2.4.1 has been successfully deployed to all 12 edge regions."
+                timestamp="15m ago"
+                icon="rocket"
+              />
+              <Notification 
+                title="System Maintenance" 
+                message="Scheduled maintenance for the primary database cluster will begin in 2 hours."
+                timestamp="1h ago"
+                icon="settings"
+              />
+            </div>
+
             <IncidentBanner title="Major Outage: US-EAST-1 Connectivity" id="INC-0042" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <AlertBanner 
@@ -238,34 +390,15 @@ export const ComponentLibrary: React.FC = () => {
           </div>
         </section>
 
-        {/* Data Display & Charts */}
-        <section>
-          <SectionDivider label="Data Display & Charts" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-4">
-              <Label>Tags & Values</Label>
-              <TagList tags={['Production', 'AWS', 'us-east-1', 'v2.4.1']} />
-              <CopyableValue label="API_KEY" value="ak_live_51Mz9X..." />
-              <Tooltip content="This is a secure value">
-                <div className="inline-flex items-center gap-2 text-text-muted hover:text-text-primary cursor-help">
-                  <ForgeIcon name="info-circle" size={14} />
-                  <span className="text-[10px] font-bold uppercase">Hover for info</span>
-                </div>
-              </Tooltip>
-            </div>
-            <div className="space-y-4">
-              <Label>Uptime History</Label>
-              <UptimeStrip history={['healthy', 'healthy', 'degraded', 'healthy', 'incident', 'healthy', 'healthy', 'healthy', 'healthy', 'healthy']} />
-              <Label>Sparkline</Label>
-              <SparkLine data={Array.from({ length: 20 }, (_, i) => ({ value: Math.random() * 100 }))} />
-            </div>
-          </div>
-        </section>
-
       </div>
 
       {/* Overlays */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="System Configuration">
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="System Configuration"
+        size={modalSize}
+      >
         <div className="space-y-6">
           <p className="text-body-md text-text-secondary">
             Adjust the global scaling parameters for the trading engine. These changes take effect immediately across all regions.
@@ -298,6 +431,38 @@ export const ComponentLibrary: React.FC = () => {
           <Button variant="outline" className="w-full" icon="export">Export Event Data</Button>
         </div>
       </Drawer>
+
+      <BottomDrawer 
+        isOpen={isBottomDrawerOpen} 
+        onClose={() => setIsBottomDrawerOpen(false)} 
+        title="Quick Actions"
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <ActionButton label="Restart Node" icon="restart" />
+          <ActionButton label="Flush Cache" icon="refresh" />
+          <ActionButton label="View Logs" icon="document-text" />
+          <ActionButton label="Escalate" icon="arrow-up" />
+        </div>
+      </BottomDrawer>
+
+      <BottomDrawer 
+        isOpen={isFullBottomDrawerOpen} 
+        onClose={() => setIsFullBottomDrawerOpen(false)} 
+        title="Global Intelligence Report"
+        fullHeight
+      >
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <KPICard label="Network Health" value="98.2%" status="healthy" />
+            <KPICard label="Active Threats" value="0" status="healthy" />
+            <KPICard label="System Load" value="42%" status="info" />
+          </div>
+          <LogViewer simulateInput className="h-[400px]" />
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={() => setIsFullBottomDrawerOpen(false)}>Close Report</Button>
+          </div>
+        </div>
+      </BottomDrawer>
     </div>
   );
 };
