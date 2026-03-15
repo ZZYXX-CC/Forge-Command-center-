@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { TradingIncident } from '@/src/types/trading';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 import { useToast } from '../primitives/Toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,7 +25,7 @@ export const TradingIncidentFeed: React.FC<TradingIncidentFeedProps> = ({ incide
     return (
       <div className="bg-surface-raised border border-surface-border rounded-lg p-6 text-center">
         <div className="flex flex-col items-center gap-2">
-          <CheckCircle2 className="w-8 h-8 text-status-healthy/30" />
+          <ForgeIcon name="check-circle" size="lg" className="text-status-healthy/30" />
           <span className="text-text-muted text-body-sm uppercase font-bold">No Trading Anomalies</span>
         </div>
       </div>
@@ -76,15 +76,15 @@ export const TradingIncidentFeed: React.FC<TradingIncidentFeedProps> = ({ incide
                 </button>
               ) : (
                 <div className="flex items-center gap-1 text-[10px] text-status-healthy font-bold">
-                  <CheckCircle2 className="w-3 h-3" />
+                  <ForgeIcon name="check-circle" size="xs" />
                   ACKNOWLEDGED
                 </div>
               )}
               <button 
                 onClick={() => handleInvestigate(incident.id)}
-                className="px-2 py-1 rounded bg-accent-primary text-text-inverse text-[10px] font-bold hover:bg-accent-dim flex items-center gap-1 transition-colors"
+                className="px-2 py-1 rounded bg-emerald-accent text-text-inverse text-[10px] font-bold hover:bg-emerald-mid flex items-center gap-1 transition-colors"
               >
-                INVESTIGATE <ChevronRight className="w-3 h-3" />
+                INVESTIGATE <ForgeIcon name="arrow-right-up" size="xs" />
               </button>
             </div>
           </div>

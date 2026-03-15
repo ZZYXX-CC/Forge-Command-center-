@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '@/src/lib/utils';
 import { CDNNode } from '@/src/types/webOps';
 import { formatDistanceToNow } from 'date-fns';
-import { Trash2, AlertCircle, Check, X } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 
 interface CDNStatusCardProps {
   nodes: CDNNode[];
@@ -49,8 +49,8 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
               </div>
             </div>
             
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col items-end">
+            <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+              <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[9px] text-text-muted uppercase">Hit Rate</span>
                 <span className={cn(
                   "text-label-xs font-mono font-bold",
@@ -61,12 +61,12 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
                 </span>
               </div>
               
-              <div className="flex flex-col items-end">
+              <div className="hidden xs:flex flex-col items-end">
                 <span className="text-[9px] text-text-muted uppercase">Bandwidth</span>
                 <span className="text-label-xs font-mono text-text-primary">{node.bandwidthGb} GB</span>
               </div>
               
-              <div className="flex flex-col items-end min-w-[80px]">
+              <div className="flex flex-col items-end min-w-[60px] sm:min-w-[80px]">
                 <span className="text-[9px] text-text-muted uppercase">Purged</span>
                 <span className="text-[10px] font-mono text-text-secondary">
                   {formatDistanceToNow(new Date(node.lastPurgedAt), { addSuffix: true })}
@@ -83,13 +83,13 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
             onClick={() => setIsConfirmingPurge(true)}
             className="w-full py-2 flex items-center justify-center gap-2 bg-surface-border hover:bg-surface-hover text-text-primary rounded text-[10px] font-bold uppercase transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <ForgeIcon name="trash-2" size="sm" />
             Purge All Cache
           </button>
         ) : (
           <div className="flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-status-incident/10 border border-status-incident/30 rounded text-status-incident">
-              <AlertCircle className="w-3.5 h-3.5" />
+              <ForgeIcon name="danger-triangle" size="sm" />
               <span className="text-[10px] font-bold uppercase">Confirm Purge?</span>
             </div>
             <button 
@@ -104,7 +104,7 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
               onClick={() => setIsConfirmingPurge(false)}
               className="p-2 bg-surface-border text-text-primary rounded hover:bg-surface-hover disabled:opacity-50"
             >
-              <X className="w-3.5 h-3.5" />
+              <ForgeIcon name="close-circle" size="sm" />
             </button>
           </div>
         )}
@@ -113,7 +113,7 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
       {isPurging && (
         <div className="absolute inset-0 bg-surface-base/60 backdrop-blur-[1px] flex items-center justify-center z-10">
           <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-6 h-6 text-emerald-accent animate-spin" />
+            <ForgeIcon name="refresh" size="xl" className="text-emerald-accent animate-spin" />
             <span className="text-[10px] font-bold text-emerald-accent uppercase tracking-widest">Invalidating Edge Cache...</span>
           </div>
         </div>
@@ -121,7 +121,3 @@ export const CDNStatusCard: React.FC<CDNStatusCardProps> = ({ nodes }) => {
     </div>
   );
 };
-
-const RefreshCw = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { WebAlert } from '@/src/types/webOps';
-import { AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 import { formatDistanceToNow } from 'date-fns';
 
 interface WebAlertsPanelProps {
@@ -19,7 +19,7 @@ export const WebAlertsPanel: React.FC<WebAlertsPanelProps> = ({ alerts }) => {
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 border border-dashed border-surface-border rounded-lg">
-            <CheckCircle2 className="w-6 h-6 text-status-healthy mb-2 opacity-50" />
+            <ForgeIcon name="check-circle" size="lg" className="text-status-healthy mb-2 opacity-50" />
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">✓ No active web alerts</span>
           </div>
         ) : (
@@ -33,18 +33,22 @@ export const WebAlertsPanel: React.FC<WebAlertsPanelProps> = ({ alerts }) => {
               )}
             >
               <div className="flex items-start gap-3">
-                <AlertCircle className={cn(
-                  "w-4 h-4 mt-0.5 shrink-0",
-                  alert.severity === 'critical' ? "text-status-incident" : 
-                  alert.severity === 'high' ? "text-status-degraded" : "text-status-info"
-                )} />
+                <ForgeIcon 
+                  name={alert.severity === 'critical' ? "fire" : "danger-triangle"} 
+                  size="sm" 
+                  className={cn(
+                    "mt-0.5 shrink-0",
+                    alert.severity === 'critical' ? "text-status-incident" : 
+                    alert.severity === 'high' ? "text-status-degraded" : "text-status-info"
+                  )} 
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-label-xs font-bold text-text-primary leading-tight mb-1">
                     {alert.title}
                   </p>
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1 text-text-muted">
-                      <Clock className="w-3 h-3" />
+                      <ForgeIcon name="clock-circle" size="xs" />
                       <span className="text-[10px] font-mono">
                         {formatDistanceToNow(Date.now() - alert.ageMs, { addSuffix: true })}
                       </span>

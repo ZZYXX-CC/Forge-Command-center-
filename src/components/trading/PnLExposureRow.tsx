@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { PnLSummary } from '@/src/types/trading';
-import { TrendingUp, TrendingDown, Target, ShieldAlert } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 
 interface PnLExposureRowProps {
   pnl: PnLSummary;
@@ -17,25 +17,25 @@ export const PnLExposureRow: React.FC<PnLExposureRowProps> = ({ pnl }) => {
   const pnlColor = (val: number) => val >= 0 ? 'text-status-healthy' : 'text-status-incident';
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {/* PnL Stats */}
       <div className="bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-label-sm text-text-muted uppercase">PnL Summary</span>
-          <TrendingUp className="w-4 h-4 text-text-muted" />
+          <ForgeIcon name="graph-up" size="xs" className="text-text-muted" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 xs:grid-cols-3 gap-2">
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted uppercase">Session</span>
-            <span className={cn("text-heading-sm font-mono", pnlColor(pnl.session))}>{formatCurrency(pnl.session)}</span>
+            <span className={cn("text-label-sm xs:text-heading-sm font-mono", pnlColor(pnl.session))}>{formatCurrency(pnl.session)}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted uppercase">Day</span>
-            <span className={cn("text-heading-sm font-mono", pnlColor(pnl.day))}>{formatCurrency(pnl.day)}</span>
+            <span className={cn("text-label-sm xs:text-heading-sm font-mono", pnlColor(pnl.day))}>{formatCurrency(pnl.day)}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted uppercase">Week</span>
-            <span className={cn("text-heading-sm font-mono", pnlColor(pnl.week))}>{formatCurrency(pnl.week)}</span>
+            <span className={cn("text-label-sm xs:text-heading-sm font-mono", pnlColor(pnl.week))}>{formatCurrency(pnl.week)}</span>
           </div>
         </div>
       </div>
@@ -44,16 +44,16 @@ export const PnLExposureRow: React.FC<PnLExposureRowProps> = ({ pnl }) => {
       <div className="bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-label-sm text-text-muted uppercase">Realized vs Unrealized</span>
-          <Target className="w-4 h-4 text-text-muted" />
+          <ForgeIcon name="target" size="xs" className="text-text-muted" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted uppercase">Realized</span>
-            <span className={cn("text-heading-md font-mono", pnlColor(pnl.realized))}>{formatCurrency(pnl.realized)}</span>
+            <span className={cn("text-heading-sm xs:text-heading-md font-mono", pnlColor(pnl.realized))}>{formatCurrency(pnl.realized)}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted uppercase">Unrealized</span>
-            <span className={cn("text-heading-md font-mono", pnlColor(pnl.unrealized))}>{formatCurrency(pnl.unrealized)}</span>
+            <span className={cn("text-heading-sm xs:text-heading-md font-mono", pnlColor(pnl.unrealized))}>{formatCurrency(pnl.unrealized)}</span>
           </div>
         </div>
       </div>
@@ -62,7 +62,7 @@ export const PnLExposureRow: React.FC<PnLExposureRowProps> = ({ pnl }) => {
       <div className="bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-label-sm text-text-muted uppercase">Margin & Risk</span>
-          <ShieldAlert className="w-4 h-4 text-text-muted" />
+          <ForgeIcon name="shield-warning" size="xs" className="text-text-muted" />
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
@@ -89,7 +89,7 @@ export const PnLExposureRow: React.FC<PnLExposureRowProps> = ({ pnl }) => {
       <div className="bg-surface-raised border border-surface-border rounded-lg p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-label-sm text-text-muted uppercase">Drawdown Control</span>
-          <TrendingDown className="w-4 h-4 text-text-muted" />
+          <ForgeIcon name="graph-down" size="xs" className="text-text-muted" />
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">

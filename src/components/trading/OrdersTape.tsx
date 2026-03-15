@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { Order } from '@/src/types/trading';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 
 interface OrdersTapeProps {
   orders: Order[];
@@ -10,10 +10,10 @@ interface OrdersTapeProps {
 
 export const OrdersTape: React.FC<OrdersTapeProps> = ({ orders }) => {
   const statusIcons = {
-    filled: <CheckCircle2 className="w-3.5 h-3.5 text-status-healthy" />,
-    rejected: <XCircle className="w-3.5 h-3.5 text-status-incident" />,
-    canceled: <Clock className="w-3.5 h-3.5 text-text-muted" />,
-    open: <Clock className="w-3.5 h-3.5 text-status-info animate-pulse" />,
+    filled: <ForgeIcon name="check-circle" size="xs" className="text-status-healthy" />,
+    rejected: <ForgeIcon name="fire" size="xs" className="text-status-incident" />,
+    canceled: <ForgeIcon name="clock-circle" size="xs" className="text-text-muted" />,
+    open: <ForgeIcon name="refresh" size="xs" className="text-status-info animate-spin" />,
   };
 
   const statusColors = {
@@ -74,7 +74,7 @@ export const OrdersTape: React.FC<OrdersTapeProps> = ({ orders }) => {
 
             {order.status === 'rejected' && (
               <div className="mt-1 flex items-start gap-2 p-2 bg-status-incident/5 border border-status-incident/10 rounded">
-                <AlertTriangle className="w-3 h-3 text-status-incident mt-0.5" />
+                <ForgeIcon name="danger-triangle" size="xs" className="text-status-incident mt-0.5" />
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-status-incident uppercase">Rejected: {order.rejectReason}</span>
                   <span className="text-[10px] text-text-muted">Exchange Code: {order.retCode}</span>

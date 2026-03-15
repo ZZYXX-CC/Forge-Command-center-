@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { Strategy } from '@/src/types/trading';
-import { Play, Pause, AlertCircle, Heart } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 
 interface StrategyRuntimePanelProps {
   strategies: Strategy[];
@@ -29,11 +29,11 @@ export const StrategyRuntimePanel: React.FC<StrategyRuntimePanelProps> = ({ stra
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {strat.state === 'running' ? (
                   <button className="p-1 text-text-muted hover:text-status-degraded transition-colors">
-                    <Pause className="w-3.5 h-3.5" />
+                    <ForgeIcon name="close-circle" size="xs" />
                   </button>
                 ) : (
                   <button className="p-1 text-text-muted hover:text-status-healthy transition-colors">
-                    <Play className="w-3.5 h-3.5" />
+                    <ForgeIcon name="rocket" size="xs" />
                   </button>
                 )}
               </div>
@@ -42,7 +42,7 @@ export const StrategyRuntimePanel: React.FC<StrategyRuntimePanelProps> = ({ stra
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
-                  <Heart className="w-2.5 h-2.5 text-text-muted" />
+                  <ForgeIcon name="pulse" size="xs" className="text-text-muted" />
                   <span className="text-[10px] text-text-muted uppercase">Heartbeat</span>
                 </div>
                 <span className="text-mono-sm text-text-secondary">{strat.heartbeatAge}</span>
@@ -63,7 +63,7 @@ export const StrategyRuntimePanel: React.FC<StrategyRuntimePanelProps> = ({ stra
 
             {strat.state === 'error' && (
               <div className="mt-1 flex items-center gap-2 p-2 bg-status-incident/5 border border-status-incident/10 rounded">
-                <AlertCircle className="w-3 h-3 text-status-incident" />
+                <ForgeIcon name="danger-triangle" size="xs" className="text-status-incident" />
                 <span className="text-[10px] font-bold text-status-incident uppercase">Execution Error: Check Logs</span>
               </div>
             )}

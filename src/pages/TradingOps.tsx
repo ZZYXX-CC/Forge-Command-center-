@@ -20,7 +20,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { cn } from '@/src/lib/utils';
-import { TrendingUp, TrendingDown, Clock, Maximize2, Minimize2, Zap, X } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 import { generateMockTradingData } from '@/src/lib/mockData';
 
 export const TradingOps: React.FC = () => {
@@ -52,8 +52,8 @@ export const TradingOps: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] gap-4">
-        <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
-        <span className="text-label-md animate-pulse">Synchronizing Trading Engine...</span>
+        <ForgeIcon name="refresh" size="xl" className="text-emerald-accent animate-spin" />
+        <span className="text-label-md animate-pulse uppercase tracking-widest text-text-muted">Synchronizing Trading Engine...</span>
       </div>
     );
   }
@@ -61,14 +61,15 @@ export const TradingOps: React.FC = () => {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] p-4 text-center">
-        <div className="max-w-md w-full p-6 bg-surface-raised border border-status-incident rounded-lg">
-          <div className="text-status-incident text-display-lg mb-4">ENGINE DISCONNECTED</div>
+        <div className="max-w-md w-full p-8 bg-surface-raised border border-status-incident rounded-lg shadow-raised">
+          <ForgeIcon name="danger-triangle" size="xl" className="text-status-incident mx-auto mb-4" />
+          <h2 className="text-heading-lg text-text-primary mb-2 uppercase tracking-tighter">Engine Disconnected</h2>
           <p className="text-body-md text-text-secondary mb-6">
-            Lost connection to the trading execution service. Retrying...
+            Lost connection to the trading execution service. The engine may be undergoing maintenance.
           </p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-accent-primary text-text-inverse rounded-md font-bold hover:bg-accent-dim transition-colors"
+            className="w-full py-3 bg-emerald-accent text-text-inverse rounded font-bold uppercase hover:bg-emerald-mid transition-colors"
           >
             Reconnect Manually
           </button>
@@ -78,9 +79,10 @@ export const TradingOps: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 lg:p-6 max-w-[1600px] mx-auto w-full">
-      {/* Top Health Bar */}
-      <ExecutionHealthBar health={data.health} />
+    <div className="flex-1 flex flex-col min-h-0 bg-surface-base overflow-y-auto">
+      <div className="max-w-[1600px] mx-auto w-full p-4 lg:p-6 flex flex-col gap-6">
+        {/* Top Health Bar */}
+        <ExecutionHealthBar health={data.health} />
 
       {/* Historical PnL Chart */}
       <div className={cn(
@@ -98,7 +100,7 @@ export const TradingOps: React.FC = () => {
                   className={cn(
                     "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
                     timeframe === tf 
-                      ? "bg-surface-overlay text-accent-primary border border-accent-primary/30" 
+                      ? "bg-emerald-subtle-bg text-emerald-accent border border-emerald-accent/30" 
                       : "hover:bg-surface-hover text-text-muted"
                   )}
                 >
@@ -109,23 +111,23 @@ export const TradingOps: React.FC = () => {
             {!isChartFullscreen && (
               <button 
                 onClick={() => navigate('/trading/p2p')}
-                className="flex items-center gap-2 px-3 py-1 rounded bg-accent-subtle text-accent-primary border border-accent-primary/20 hover:bg-accent-subtle/80 transition-all"
+                className="flex items-center gap-2 px-3 py-1 rounded bg-emerald-subtle-bg text-emerald-accent border border-emerald-accent/20 hover:bg-emerald-subtle/80 transition-all"
               >
-                <Zap className="w-3.5 h-3.5" />
-                <span className="text-label-sm font-bold">P2P MONITORING</span>
+                <ForgeIcon name="bolt" size="xs" />
+                <span className="text-[10px] font-bold uppercase">P2P MONITORING</span>
               </button>
             )}
           </div>
           <div className="flex items-center justify-between sm:justify-end gap-4 border-t border-surface-border sm:border-none pt-3 sm:pt-0">
             <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-mono-sm text-text-secondary">LIVE FEED</span>
+              <ForgeIcon name="clock-circle" size="xs" className="text-text-muted" />
+              <span className="text-[10px] font-mono text-text-secondary uppercase">Live Feed</span>
             </div>
             <button 
               onClick={() => setIsChartFullscreen(!isChartFullscreen)}
               className="p-1 text-text-muted hover:text-text-primary transition-colors"
             >
-              {isChartFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-4 h-4" />}
+              {isChartFullscreen ? <ForgeIcon name="close-circle" size="md" /> : <ForgeIcon name="arrow-right-up" size="sm" />}
             </button>
           </div>
         </div>
@@ -177,7 +179,7 @@ export const TradingOps: React.FC = () => {
       {/* Main Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Left Column: Positions & Orders */}
-        <div className="xl:col-span-8 flex flex-col gap-6">
+        <div className="xl:col-span-8 flex flex-col gap-6 min-w-0">
           <PositionsTable positions={data.positions} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="h-[400px]">
@@ -199,6 +201,7 @@ export const TradingOps: React.FC = () => {
             <RiskGuardrailPanel risk={data.risk} />
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

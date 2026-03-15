@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/src/lib/utils';
 import { QuickAction } from '@/src/types/webOps';
-import { ArrowRight, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 
 interface QuickActionsPanelProps {
   actions: QuickAction[];
@@ -50,10 +50,14 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ actions })
                 {action.domain}
               </span>
             </div>
-            <ArrowRight className={cn(
-              "w-4 h-4 text-text-muted group-hover:text-text-primary transition-all group-hover:translate-x-0.5",
-              action.destructive && "group-hover:text-status-incident"
-            )} />
+            <ForgeIcon 
+              name="arrow-right-up" 
+              size="sm" 
+              className={cn(
+                "text-text-muted group-hover:text-text-primary transition-all group-hover:translate-x-0.5",
+                action.destructive && "group-hover:text-status-incident"
+              )} 
+            />
           </button>
         ))}
       </div>
@@ -68,9 +72,9 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ actions })
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 {toast.status === 'confirm' ? (
-                  <AlertTriangle className="w-5 h-5 text-status-incident" />
+                  <ForgeIcon name="danger-triangle" size="md" className="text-status-incident" />
                 ) : (
-                  <CheckCircle2 className="w-5 h-5 text-status-healthy" />
+                  <ForgeIcon name="check-circle" size="md" className="text-status-healthy" />
                 )}
                 <div className="flex flex-col">
                   <span className="text-label-md font-bold uppercase tracking-wider text-text-primary">
@@ -82,7 +86,7 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ actions })
                 </div>
               </div>
               <button onClick={() => setToast(null)} className="text-text-muted hover:text-text-primary">
-                <X className="w-4 h-4" />
+                <ForgeIcon name="close-circle" size="sm" />
               </button>
             </div>
             

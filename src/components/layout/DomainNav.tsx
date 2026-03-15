@@ -1,10 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
-import { 
-  Command,
-  X
-} from 'lucide-react';
 import { ForgeIcon } from '../primitives/ForgeIcon';
 import { OverviewState } from '@/src/types';
 
@@ -43,7 +39,7 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
         <div className="px-4 mb-6 flex items-center justify-between">
           <span className="text-heading-md font-bold tracking-tighter text-text-primary">FORGE</span>
           <button onClick={onSelect} className="p-2 hover:bg-surface-hover rounded-md">
-            <X className="w-5 h-5 text-text-muted" />
+            <ForgeIcon name="close-circle" size="md" className="text-text-muted" />
           </button>
         </div>
       )}
@@ -91,7 +87,7 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
       <div className="px-4 py-4 border-t border-surface-border space-y-4">
         <div className="flex items-center justify-between text-text-muted">
           <div className="flex items-center gap-2">
-            <Command className="w-3.5 h-3.5" />
+            <ForgeIcon name="command" size="xs" />
             <span className="text-label-sm">⌘K</span>
           </div>
           <span className="text-label-sm">Palette</span>

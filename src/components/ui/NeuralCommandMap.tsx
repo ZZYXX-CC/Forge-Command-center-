@@ -1,8 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import { Icon } from '@iconify/react';
 import { cn } from '@/src/lib/utils';
 import { Agent, Relationship, AGENTS, RELATIONSHIPS, AgentTier, AgentStatus } from '@/src/types/agents';
+import { ForgeIcon } from './ForgeIcon';
 
 // --- Constants & Helpers ---
 
@@ -119,7 +119,7 @@ const Edge = ({
             animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
-          <Icon icon="solar:shield-cross-bold" width={14} className="text-status-incident -translate-x-1.75 -translate-y-1.75" />
+          <ForgeIcon name="shield-cross" style="bold" size="sm" className="text-status-incident -translate-x-1.75 -translate-y-1.75" />
         </g>
       )}
 
@@ -458,7 +458,7 @@ export const NeuralCommandMap: React.FC = () => {
                 view === 'map' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
               )}
             >
-              <Icon icon="solar:graph-new-bold-duotone" width={14} />
+              <ForgeIcon name="graph-new" size="sm" />
               <span className="hidden xs:inline">MAP</span>
               <span className="xs:hidden">MAP</span>
             </button>
@@ -469,7 +469,7 @@ export const NeuralCommandMap: React.FC = () => {
                 view === 'roster' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
               )}
             >
-              <Icon icon="solar:clipboard-list-bold-duotone" width={14} />
+              <ForgeIcon name="clipboard-list" size="sm" />
               <span className="hidden xs:inline">ROSTER</span>
               <span className="xs:hidden">LIST</span>
             </button>
@@ -480,7 +480,7 @@ export const NeuralCommandMap: React.FC = () => {
                 view === 'chat' ? "bg-emerald-subtle text-emerald-accent" : "text-text-muted hover:text-text-secondary"
               )}
             >
-              <Icon icon="solar:chat-round-dots-bold-duotone" width={14} />
+              <ForgeIcon name="chat-round-dots" size="sm" />
               <span className="hidden xs:inline">CHAT</span>
               <span className="xs:hidden">CHAT</span>
             </button>
@@ -490,7 +490,7 @@ export const NeuralCommandMap: React.FC = () => {
             className="p-2 text-text-muted hover:text-text-primary transition-colors"
             title="Reset View"
           >
-            <Icon icon="solar:restart-bold-duotone" width={20} />
+            <ForgeIcon name="restart" size="md" />
           </button>
         </div>
       </header>
@@ -670,7 +670,7 @@ export const NeuralCommandMap: React.FC = () => {
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-surface-overlay border border-status-incident p-6 rounded-xl shadow-raised max-w-xs"
                   >
                     <div className="flex items-center gap-3 text-status-incident mb-3">
-                      <Icon icon="solar:shield-warning-bold-duotone" width={24} />
+                      <ForgeIcon name="shield-warning" size="lg" />
                       <h3 className="font-bold uppercase tracking-widest text-label-md">Security Policy</h3>
                     </div>
                     <p className="text-text-secondary text-label-sm leading-relaxed">
@@ -751,7 +751,7 @@ export const NeuralCommandMap: React.FC = () => {
                     <div className="p-4 border-b border-surface-border flex items-center justify-between">
                       <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Intelligence Tools</h3>
                       <button onClick={() => setShowChatSidebar(false)} className="lg:hidden p-1 text-text-muted hover:text-text-primary">
-                        <Icon icon="solar:close-circle-bold-duotone" width={18} />
+                        <ForgeIcon name="close-circle" size="md" />
                       </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar">
@@ -768,26 +768,26 @@ export const NeuralCommandMap: React.FC = () => {
                           <h3 className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Bot Internals</h3>
                           <div className="space-y-1">
                             <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <Icon icon="solar:document-text-bold-duotone" width={16} className="text-emerald-accent" />
+                              <ForgeIcon name="document-text" size="sm" className="text-emerald-accent" />
                               <span className="text-label-sm font-medium">Open Logs</span>
                             </button>
                             <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <Icon icon="solar:cpu-bold-duotone" width={16} className="text-emerald-accent" />
+                              <ForgeIcon name="cpu" size="sm" className="text-emerald-accent" />
                               <span className="text-label-sm font-medium">Memory Browser</span>
                             </button>
                             <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <Icon icon="solar:calendar-bold-duotone" width={16} className="text-emerald-accent" />
+                              <ForgeIcon name="calendar" size="sm" className="text-emerald-accent" />
                               <span className="text-label-sm font-medium">Schedules</span>
                             </button>
                             <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <Icon icon="solar:settings-bold-duotone" width={16} className="text-emerald-accent" />
+                              <ForgeIcon name="settings" size="sm" className="text-emerald-accent" />
                               <span className="text-label-sm font-medium">Bot Configuration</span>
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div className="p-6 text-center">
-                          <Icon icon="solar:users-group-two-rounded-bold-duotone" width={32} className="mx-auto text-text-muted mb-4 opacity-20" />
+                          <ForgeIcon name="users-group-two-rounded" size="xl" className="mx-auto text-text-muted mb-4 opacity-20" />
                           <p className="text-[10px] text-text-muted uppercase tracking-widest leading-relaxed">
                             Neural Network Broadcast Mode Active. Select an agent to access internal tools.
                           </p>
@@ -814,10 +814,10 @@ export const NeuralCommandMap: React.FC = () => {
                       onClick={() => setShowChatSidebar(true)}
                       className="lg:hidden p-2 -ml-2 text-text-muted hover:text-text-primary"
                     >
-                      <Icon icon="solar:hamburger-menu-bold-duotone" width={20} />
+                      <ForgeIcon name="hamburger-menu" size="md" />
                     </button>
                     <div className="text-xl shrink-0">
-                      {activeChannel === 'network' ? <Icon icon="solar:users-group-two-rounded-bold-duotone" className="text-emerald-accent" /> : AGENTS.find(a => a.id === activeChannel)?.emoji}
+                      {activeChannel === 'network' ? <ForgeIcon name="users-group-two-rounded" className="text-emerald-accent" /> : AGENTS.find(a => a.id === activeChannel)?.emoji}
                     </div>
                     <div 
                       className="min-w-0 cursor-pointer group"
@@ -848,7 +848,7 @@ export const NeuralCommandMap: React.FC = () => {
                       </div>
                     )}
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <button className="hidden sm:block p-2 text-text-muted hover:text-text-primary transition-colors"><Icon icon="solar:videocamera-record-bold-duotone" width={18} /></button>
+                      <button className="hidden sm:block p-2 text-text-muted hover:text-text-primary transition-colors"><ForgeIcon name="videocamera-record" size="md" /></button>
                     </div>
                   </div>
                 </div>
@@ -907,7 +907,7 @@ export const NeuralCommandMap: React.FC = () => {
                 <div className="p-6 border-t border-surface-border bg-surface-raised/50">
                   <div className="flex gap-3 max-w-4xl mx-auto relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
-                      <button className="text-text-muted hover:text-emerald-accent"><Icon icon="solar:paperclip-bold-duotone" width={18} /></button>
+                      <button className="text-text-muted hover:text-emerald-accent"><ForgeIcon name="paperclip" size="md" /></button>
                     </div>
                     <input 
                       type="text" 
@@ -921,7 +921,7 @@ export const NeuralCommandMap: React.FC = () => {
                       onClick={handleSendMessage}
                       className="px-6 bg-emerald-accent text-surface-base rounded-xl font-bold text-label-sm hover:bg-emerald-mid transition-all flex items-center gap-2 shadow-lg shadow-emerald-accent/10 active:scale-95"
                     >
-                      <Icon icon="solar:send-bold-duotone" width={18} />
+                      <ForgeIcon name="send" size="md" />
                       SEND
                     </button>
                   </div>
@@ -954,7 +954,7 @@ export const NeuralCommandMap: React.FC = () => {
                     </div>
                   </div>
                   <button onClick={() => setSelectedId(null)} className="p-2 text-text-muted hover:text-text-primary">
-                    <Icon icon="solar:close-circle-bold-duotone" width={24} />
+                    <ForgeIcon name="close-circle" size="lg" />
                   </button>
                 </div>
 
@@ -1026,7 +1026,7 @@ export const NeuralCommandMap: React.FC = () => {
                 {selectedAgent.policy && (
                   <div className="p-4 bg-status-degraded-bg border border-status-degraded/30 rounded-lg">
                     <div className="flex items-center gap-2 text-status-degraded mb-2">
-                      <Icon icon="solar:shield-warning-bold-duotone" width={16} />
+                      <ForgeIcon name="shield-warning" size="sm" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">Policy Restriction</span>
                     </div>
                     <p className="text-[10px] text-text-secondary leading-relaxed italic">

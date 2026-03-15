@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/src/lib/utils';
 import { RiskConfig } from '@/src/types/trading';
-import { Shield, Power, AlertTriangle, Lock, X, AlertCircle } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 
 interface RiskGuardrailPanelProps {
   risk: RiskConfig;
@@ -20,7 +20,7 @@ export const RiskGuardrailPanel: React.FC<RiskGuardrailPanelProps> = ({ risk }) 
     <div className="bg-surface-raised border border-surface-border rounded-lg flex flex-col h-full relative">
       <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-accent-primary" />
+          <ForgeIcon name="shield-minimalistic" size="sm" className="text-emerald-accent" />
           <span className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Risk Guardrails</span>
         </div>
         <div className={cn(
@@ -76,7 +76,7 @@ export const RiskGuardrailPanel: React.FC<RiskGuardrailPanelProps> = ({ risk }) 
               "bg-status-incident/10 border border-status-incident/30 text-status-incident hover:bg-status-incident/20 font-bold uppercase text-label-sm"
             )}
           >
-            <Power className="w-4 h-4" />
+            <ForgeIcon name="restart" size="xs" />
             Emergency Kill Switch
           </button>
           <p className="text-[10px] text-text-muted text-center italic">
@@ -87,7 +87,7 @@ export const RiskGuardrailPanel: React.FC<RiskGuardrailPanelProps> = ({ risk }) 
 
       <div className="px-4 py-2 bg-surface-base/30 border-t border-surface-border">
         <div className="flex items-center gap-2 text-status-degraded">
-          <AlertTriangle className="w-3 h-3" />
+          <ForgeIcon name="danger-triangle" size="xs" />
           <span className="text-[10px] uppercase font-bold">Next Action: Review daily loss limit threshold</span>
         </div>
       </div>
@@ -98,11 +98,11 @@ export const RiskGuardrailPanel: React.FC<RiskGuardrailPanelProps> = ({ risk }) 
           <div className="bg-surface-overlay border border-status-incident rounded-lg p-6 w-full max-w-xs shadow-raised flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-status-incident">
-                <AlertCircle className="w-5 h-5" />
+                <ForgeIcon name="danger-triangle" size="sm" />
                 <span className="text-label-md font-bold uppercase tracking-wider">Confirm Kill</span>
               </div>
               <button onClick={() => setIsConfirming(false)} className="text-text-muted hover:text-text-primary">
-                <X className="w-4 h-4" />
+                <ForgeIcon name="close-circle" size="sm" />
               </button>
             </div>
             

@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { Certificate } from '@/src/types/webOps';
 import { format } from 'date-fns';
-import { Shield, ShieldAlert, ShieldCheck, RefreshCcw } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 
 interface CertificatesCardProps {
   certificates: Certificate[];
@@ -26,11 +26,11 @@ export const CertificatesCard: React.FC<CertificatesCardProps> = ({ certificates
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {isCritical ? (
-                    <ShieldAlert className="w-4 h-4 text-status-incident animate-pulse" />
+                    <ForgeIcon name="shield-warning" size="sm" className="text-status-incident animate-pulse" />
                   ) : isWarning ? (
-                    <ShieldAlert className="w-4 h-4 text-status-degraded" />
+                    <ForgeIcon name="shield-warning" size="sm" className="text-status-degraded" />
                   ) : (
-                    <ShieldCheck className="w-4 h-4 text-status-healthy" />
+                    <ForgeIcon name="shield-check" size="sm" className="text-status-healthy" />
                   )}
                   <span className="text-label-xs font-bold text-text-primary font-mono">{cert.domain}</span>
                 </div>
@@ -62,7 +62,7 @@ export const CertificatesCard: React.FC<CertificatesCardProps> = ({ certificates
                     </span>
                     {isCritical && (
                       <button className="p-1 bg-status-incident/10 text-status-incident rounded hover:bg-status-incident/20 transition-colors" title="Renew Now">
-                        <RefreshCcw className="w-3 h-3" />
+                        <ForgeIcon name="refresh" size="xs" />
                       </button>
                     )}
                   </div>

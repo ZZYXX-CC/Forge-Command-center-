@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { WebOpsKPIs } from '@/src/types/webOps';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 
 interface WebOpsKPIStripProps {
   kpis: WebOpsKPIs;
@@ -78,9 +78,9 @@ export const WebOpsKPIStrip: React.FC<WebOpsKPIStripProps> = ({ kpis, activeFilt
             
             <div className="flex items-center gap-1.5">
               {isPositive ? (
-                <TrendingUp className={cn("w-3 h-3", item.id === 'errors' ? "text-status-incident" : "text-status-healthy")} />
+                <ForgeIcon name="graph-up" size="xs" className={cn(item.id === 'errors' ? "text-status-incident" : "text-status-healthy")} />
               ) : (
-                <TrendingDown className={cn("w-3 h-3", item.id === 'errors' ? "text-status-healthy" : "text-status-incident")} />
+                <ForgeIcon name="graph-down" size="xs" className={cn(item.id === 'errors' ? "text-status-healthy" : "text-status-incident")} />
               )}
               <span className={cn(
                 "text-[10px] font-bold uppercase",

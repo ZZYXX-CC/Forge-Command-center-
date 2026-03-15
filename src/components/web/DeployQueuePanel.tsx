@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { DeployQueueItem } from '@/src/types/webOps';
 import { formatDistanceToNow } from 'date-fns';
-import { Box, CheckCircle2, XCircle, Clock, RotateCcw } from 'lucide-react';
+import { ForgeIcon } from '../primitives/ForgeIcon';
 
 interface DeployQueuePanelProps {
   queue: DeployQueueItem[];
@@ -21,7 +21,7 @@ export const DeployQueuePanel: React.FC<DeployQueuePanelProps> = ({ queue }) => 
           <div key={item.id} className="p-3 rounded-lg border border-surface-border bg-surface-raised transition-all hover:border-surface-border/80">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Box className="w-4 h-4 text-text-muted" />
+                <ForgeIcon name="code-square" size="sm" className="text-text-muted" />
                 <div className="flex flex-col">
                   <span className="text-label-xs font-bold text-text-primary font-mono">{item.service}</span>
                   <span className="text-[10px] text-text-muted font-mono">{item.version}</span>
@@ -52,7 +52,7 @@ export const DeployQueuePanel: React.FC<DeployQueuePanelProps> = ({ queue }) => 
                 </div>
                 {item.etaSeconds && (
                   <div className="mt-1 flex items-center gap-1 text-[9px] text-text-muted font-mono">
-                    <Clock className="w-2.5 h-2.5" />
+                    <ForgeIcon name="clock-circle" size="xs" />
                     <span>ETA: {item.etaSeconds}s</span>
                   </div>
                 )}
@@ -70,7 +70,7 @@ export const DeployQueuePanel: React.FC<DeployQueuePanelProps> = ({ queue }) => 
               
               {item.status === 'failed' && (
                 <button className="flex items-center gap-1 text-[10px] font-bold text-status-incident uppercase hover:underline">
-                  <RotateCcw className="w-3 h-3" />
+                  <ForgeIcon name="refresh" size="xs" />
                   Retry
                 </button>
               )}

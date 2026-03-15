@@ -4,7 +4,6 @@ import { StatusBadge } from '../primitives/StatusBadge';
 import { ModeChip } from '../primitives/ModeChip';
 import { FreshnessIndicator } from '../primitives/FreshnessIndicator';
 import { OverviewState } from '@/src/types';
-import { ChevronDown, Clock, Menu, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/src/hooks/useTheme';
 
@@ -39,7 +38,7 @@ export const HealthStrip: React.FC<HealthStripProps> = ({ data, onMenuToggle, cu
           onClick={onMenuToggle}
           className="lg:hidden p-1.5 -ml-1.5 rounded-md hover:bg-surface-hover transition-colors"
         >
-          <Menu className="w-5 h-5 text-text-primary" />
+          <ForgeIcon name="hamburger-menu" size="md" className="text-text-primary" />
         </button>
 
         {/* Logo */}
@@ -89,9 +88,9 @@ export const HealthStrip: React.FC<HealthStripProps> = ({ data, onMenuToggle, cu
           </div>
           
           <div className="hidden md:flex items-center gap-2 px-2 py-1 rounded-md hover:bg-surface-hover cursor-pointer border border-surface-border transition-colors">
-            <Clock className="w-3.5 h-3.5 text-text-secondary" />
+            <ForgeIcon name="clock-circle" size="sm" className="text-text-secondary" />
             <span className="text-label-sm">24H</span>
-            <ChevronDown className="w-3 h-3 text-text-muted" />
+            <ForgeIcon name="alt-arrow-down" size="xs" className="text-text-muted" />
           </div>
 
           <button
@@ -99,7 +98,7 @@ export const HealthStrip: React.FC<HealthStripProps> = ({ data, onMenuToggle, cu
             className="p-1.5 rounded-md hover:bg-surface-hover border border-surface-border text-text-secondary hover:text-emerald-accent transition-all"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? <ForgeIcon name="sun-2" size="sm" /> : <ForgeIcon name="moon" size="sm" />}
           </button>
         </div>
       </div>

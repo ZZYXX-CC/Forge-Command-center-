@@ -99,6 +99,9 @@
   --spacing-space-10: 2.5rem;    /* 40px */
   --spacing-space-12: 3rem;      /* 48px */
 
+  /* ── BREAKPOINTS ──────────────────────────────────────────*/
+  --breakpoint-xs: 480px;
+
   /* ── BORDER RADIUS ────────────────────────────────────────*/
   --radius-sm:   3px;      /* Badges, chips, micro tags */
   --radius-md:   6px;      /* Cards, inputs, buttons */

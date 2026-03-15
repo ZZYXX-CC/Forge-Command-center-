@@ -11,7 +11,7 @@ import { WebAlertsPanel } from '@/src/components/web/WebAlertsPanel';
 import { DeployQueuePanel } from '@/src/components/web/DeployQueuePanel';
 import { QuickActionsPanel } from '@/src/components/web/QuickActionsPanel';
 import { cn } from '@/src/lib/utils';
-import { RefreshCw, Filter, ChevronDown, Clock, Globe, Shield, Box, AlertTriangle } from 'lucide-react';
+import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 import { format } from 'date-fns';
 
 type Environment = 'all' | 'production' | 'staging' | 'preview';
@@ -77,7 +77,7 @@ export const WebOps: React.FC = () => {
     return (
       <div className="flex-1 flex items-center justify-center bg-surface-base">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-8 h-8 text-emerald-accent animate-spin" />
+          <ForgeIcon name="refresh" size="xl" className="text-emerald-accent animate-spin" />
           <span className="text-label-md animate-pulse uppercase tracking-widest text-text-muted">Loading Web Operations...</span>
         </div>
       </div>
@@ -88,7 +88,7 @@ export const WebOps: React.FC = () => {
     return (
       <div className="flex-1 flex items-center justify-center bg-surface-base p-6">
         <div className="max-w-md w-full p-8 bg-surface-raised border border-status-incident rounded-lg text-center shadow-raised">
-          <AlertTriangle className="w-12 h-12 text-status-incident mx-auto mb-4" />
+          <ForgeIcon name="danger-triangle" size="xl" className="text-status-incident mx-auto mb-4" />
           <h2 className="text-heading-lg text-text-primary mb-2 uppercase tracking-tighter">Connection Failed</h2>
           <p className="text-body-md text-text-secondary mb-6">Unable to retrieve real-time web operations data. The monitoring service may be temporarily unavailable.</p>
           <button 
@@ -118,13 +118,13 @@ export const WebOps: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Environment Selector */}
-            <div className="flex bg-surface-base rounded p-1 border border-surface-border">
+            <div className="flex bg-surface-base rounded p-1 border border-surface-border overflow-x-auto no-scrollbar shrink-0">
               {(['all', 'production', 'staging', 'preview'] as Environment[]).map((e) => (
                 <button
                   key={e}
                   onClick={() => setEnv(e)}
                   className={cn(
-                    "px-3 py-1 rounded text-[10px] font-bold uppercase transition-all",
+                    "px-3 py-1 rounded text-[10px] font-bold uppercase transition-all whitespace-nowrap",
                     env === e ? "bg-emerald-accent text-text-inverse" : "text-text-muted hover:text-text-primary"
                   )}
                 >
@@ -134,11 +134,11 @@ export const WebOps: React.FC = () => {
             </div>
 
             {/* Status Filter */}
-            <div className="relative group">
+            <div className="relative group shrink-0">
               <button className="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-surface-border rounded text-[10px] font-bold uppercase text-text-secondary hover:text-text-primary transition-colors">
-                <Filter className="w-3 h-3" />
-                Status: {statusFilter}
-                <ChevronDown className="w-3 h-3" />
+                <ForgeIcon name="filter" size="sm" />
+                <span className="hidden xs:inline">Status:</span> {statusFilter}
+                <ForgeIcon name="arrow-down" size="sm" />
               </button>
               <div className="absolute top-full right-0 mt-1 w-40 bg-surface-overlay border border-surface-border rounded-lg shadow-raised opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                 {(['all', 'healthy', 'degraded', 'incident'] as StatusFilter[]).map((s) => (
@@ -158,11 +158,12 @@ export const WebOps: React.FC = () => {
 
             <button 
               onClick={handleRefresh}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-accent text-text-inverse rounded font-bold uppercase text-[10px] hover:bg-emerald-mid transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-accent text-text-inverse rounded font-bold uppercase text-[10px] hover:bg-emerald-mid transition-colors disabled:opacity-50 shrink-0"
               disabled={isRefreshing}
             >
-              <RefreshCw className={cn("w-3 h-3", isRefreshing && "animate-spin")} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              <ForgeIcon name="refresh" size="sm" className={cn(isRefreshing && "animate-spin")} />
+              <span className="hidden xs:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+              <span className="xs:hidden">{isRefreshing ? '...' : 'R'}</span>
             </button>
           </div>
         </div>
@@ -174,19 +175,19 @@ export const WebOps: React.FC = () => {
             {env !== 'all' && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-subtle-bg border border-emerald-accent/20 rounded text-[9px] font-bold text-emerald-accent uppercase">
                 Env: {env}
-                <button onClick={() => setEnv('all')}><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => setEnv('all')}><ForgeIcon name="close-circle" size="xs" /></button>
               </div>
             )}
             {statusFilter !== 'all' && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-subtle-bg border border-emerald-accent/20 rounded text-[9px] font-bold text-emerald-accent uppercase">
                 Status: {statusFilter}
-                <button onClick={() => setStatusFilter('all')}><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => setStatusFilter('all')}><ForgeIcon name="close-circle" size="xs" /></button>
               </div>
             )}
             {activeKPIFilter && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-subtle-bg border border-emerald-accent/20 rounded text-[9px] font-bold text-emerald-accent uppercase">
                 KPI: {activeKPIFilter.replace('-', ' ')}
-                <button onClick={() => setActiveKPIFilter(null)}><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => setActiveKPIFilter(null)}><ForgeIcon name="close-circle" size="xs" /></button>
               </div>
             )}
             <button 
@@ -214,7 +215,7 @@ export const WebOps: React.FC = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-emerald-accent" />
+                  <ForgeIcon name="global" size="sm" className="text-emerald-accent" />
                   <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Site Roster</h2>
                 </div>
                 <span className="text-[10px] font-mono text-text-muted">{filteredSites.length} Sites Showing</span>
@@ -263,7 +264,3 @@ export const WebOps: React.FC = () => {
     </div>
   );
 };
-
-const X = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-);
