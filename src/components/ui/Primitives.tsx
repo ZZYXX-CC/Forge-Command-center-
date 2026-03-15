@@ -140,7 +140,7 @@ export const Label = ({
 // --- MonoText ---
 export const MonoText = ({ 
   children, 
-  color = 'primary',
+  color = 'emerald',
   className 
 }: { 
   children: React.ReactNode;

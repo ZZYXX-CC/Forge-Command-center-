@@ -4,8 +4,9 @@ import { StatusBadge } from '../primitives/StatusBadge';
 import { ModeChip } from '../primitives/ModeChip';
 import { FreshnessIndicator } from '../primitives/FreshnessIndicator';
 import { OverviewState } from '@/src/types';
-import { ChevronDown, Clock, Menu } from 'lucide-react';
+import { ChevronDown, Clock, Menu, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@/src/hooks/useTheme';
 
 import { ForgeIcon } from '../primitives/ForgeIcon';
 
@@ -19,6 +20,7 @@ interface HealthStripProps {
 
 export const HealthStrip: React.FC<HealthStripProps> = ({ data, onMenuToggle, currentFilter, onFilterChange, onCustomizeClick }) => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const hasIncidents = data.incidentCount > 0;
 
   return (
@@ -91,6 +93,14 @@ export const HealthStrip: React.FC<HealthStripProps> = ({ data, onMenuToggle, cu
             <span className="text-label-sm">24H</span>
             <ChevronDown className="w-3 h-3 text-text-muted" />
           </div>
+
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-md hover:bg-surface-hover border border-surface-border text-text-secondary hover:text-emerald-accent transition-all"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
         </div>
       </div>
     </header>

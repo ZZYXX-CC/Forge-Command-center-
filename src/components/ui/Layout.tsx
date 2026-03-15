@@ -64,7 +64,7 @@ export const HealthStrip = ({
   )}>
     <StatusDot status={status} size="sm" pulse={status === 'incident'} />
     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{label}</span>
-    {value && <span className="text-[10px] font-mono text-text-primary ml-auto">{value}</span>}
+    {value && <span className="text-[10px] font-mono text-text-mono ml-auto">{value}</span>}
   </div>
 );
 
@@ -124,7 +124,7 @@ export const CopyableValue = ({
 }) => (
   <div className={cn("flex items-center gap-2 px-2 py-1 rounded bg-surface-base border border-surface-border", className)}>
     {label && <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest mr-1">{label}:</span>}
-    <span className="text-[10px] font-mono text-text-primary truncate flex-1">{value}</span>
+    <span className="text-[10px] font-mono text-text-mono truncate flex-1">{value}</span>
     <button 
       onClick={() => navigator.clipboard.writeText(value)}
       className="text-text-muted hover:text-emerald-accent transition-colors"
@@ -299,7 +299,7 @@ export const Stepper = ({
             {isCompleted ? (
               <ForgeIcon name="check-circle" size={16} />
             ) : (
-              <span className="text-xs font-bold font-mono">{i + 1}</span>
+              <span className="text-xs font-bold font-mono text-text-mono">{i + 1}</span>
             )}
           </div>
           

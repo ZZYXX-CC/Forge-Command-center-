@@ -128,6 +128,7 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
               { id: 'ui-feedback', label: 'Feedback', icon: 'notification-lines', path: '/ui/feedback' },
               { id: 'ui-data', label: 'Data Display', icon: 'chart', path: '/ui/data-display' },
               { id: 'ui-layout', label: 'Layout', icon: 'layers', path: '/ui/layout' },
+              { id: 'ui-library', label: 'Component Library', icon: 'clipboard-list', path: '/library' },
             ].map((item) => (
               <button
                 key={item.id}

@@ -116,6 +116,51 @@
 
 }
 
+[data-theme="light"] {
+  /* ── SURFACES (warm parchment) ────────────────────────── */
+  --color-surface-base:    #f5f2ed;
+  --color-surface-raised:  #edeae4;
+  --color-surface-overlay: #e5e1da;
+  --color-surface-border:  #cdc8be;
+  --color-surface-hover:   #e0dbd2;
+  --color-surface-active:  #d9d3c8;
+
+  /* ── TEXT ─────────────────────────────────────────────── */
+  --color-text-primary:    #1c2018;
+  --color-text-secondary:  #4d5249;
+  --color-text-muted:      #8a8d86;
+  --color-text-inverse:    #f5f2ed;
+  --color-text-mono:       #2a6b47; /* text-data */
+
+  /* ── EMERALD ACCENT (adjusted for light) ──────────────── */
+  --color-emerald-accent:  #3a9658;
+  --color-emerald-mid:     #2d7a46; /* emerald-hover */
+  --color-emerald-subtle:  #e2f0e8;
+
+  /* Emerald background tints for light mode */
+  --color-emerald-accent-bg: rgba(58, 150, 88, 0.1);
+  --color-emerald-mid-bg:    rgba(45, 122, 70, 0.12);
+  --color-emerald-subtle-bg: #e2f0e8;
+
+  /* ── STATUS (signal only) ─────────────────────────────── */
+  --color-status-healthy:  #2a7a46;
+  --color-status-degraded: #b07d18;
+  --color-status-incident: #b54242;
+  --color-status-info:     #3a6ba8;
+  --color-status-neutral:  #6b706a;
+
+  /* Status background tints for light mode */
+  --color-status-healthy-bg:  rgba(42, 122, 70, 0.1);
+  --color-status-degraded-bg: rgba(176, 125, 24, 0.1);
+  --color-status-incident-bg: rgba(181, 66, 66, 0.1);
+  --color-status-info-bg:     rgba(58, 107, 168, 0.1);
+  --color-status-neutral-bg:  rgba(107, 112, 106, 0.1);
+
+  /* ── ELEVATION ────────────────────────────────────────── */
+  --shadow-raised: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-hover:  0 0 0 1px rgba(58, 150, 88, 0.2);
+}
+
 /* ── BASE LAYER ───────────────────────────────────────────────*/
 @layer base {
   body {

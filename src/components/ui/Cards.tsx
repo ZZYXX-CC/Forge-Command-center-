@@ -93,7 +93,7 @@ export const KPICard = ({
     </div>
     <div className="flex items-end justify-between">
       <div className="flex flex-col">
-        <div className="text-heading-lg font-mono text-text-primary leading-none">{value}</div>
+        <div className="text-heading-lg font-mono text-text-mono leading-none">{value}</div>
         {delta !== undefined && <DeltaIndicator value={delta} className="mt-1" />}
       </div>
       <StatusDot status={status} size="lg" pulse={status === 'incident'} />
@@ -117,7 +117,7 @@ export const StatRow = ({
       {status && <StatusDot status={status} size="sm" />}
       <span className="text-label-xs font-bold text-text-secondary uppercase">{label}</span>
     </div>
-    <div className="text-label-xs font-mono text-text-primary">{value}</div>
+    <div className="text-label-xs font-mono text-text-mono">{value}</div>
   </div>
 );
 

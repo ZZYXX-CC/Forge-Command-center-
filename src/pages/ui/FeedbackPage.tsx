@@ -7,7 +7,10 @@ import {
   AlertBanner, 
   InlineAlert, 
   IncidentBanner,
-  Label
+  Label,
+  Toast,
+  Notification,
+  Button
 } from '@/src/components/ui';
 
 export const FeedbackPage: React.FC = () => {
@@ -32,6 +35,38 @@ export const FeedbackPage: React.FC = () => {
               <div className="space-y-4">
                 <InlineAlert status="success" message="System reconciliation complete" />
                 <InlineAlert status="error" message="Failed to connect to primary database" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <Label className="text-text-muted uppercase tracking-widest text-[10px]">Toasts & Notifications</Label>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Label className="text-[9px]">NOTIFICATIONS</Label>
+              <div className="space-y-3">
+                <Notification 
+                  title="Deployment Successful" 
+                  message="v2.4.1 has been successfully deployed to all production clusters." 
+                  icon="check-circle"
+                  unread={true}
+                  timestamp="Just now"
+                />
+                <Notification 
+                  title="System Warning" 
+                  message="Memory usage on node-04 exceeds 85% threshold." 
+                  icon="shield-warning"
+                  timestamp="2m ago"
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-[9px]">TOAST VARIANTS</Label>
+              <div className="flex flex-wrap gap-3">
+                <Toast message="Action completed successfully" status="success" />
+                <Toast message="Connection lost. Retrying..." status="warning" />
+                <Toast message="Critical system failure" status="error" />
               </div>
             </div>
           </div>

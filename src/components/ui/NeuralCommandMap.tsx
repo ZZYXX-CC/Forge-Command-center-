@@ -7,11 +7,11 @@ import { Agent, Relationship, AGENTS, RELATIONSHIPS, AgentTier, AgentStatus } fr
 // --- Constants & Helpers ---
 
 const STATUS_COLORS: Record<AgentStatus, string> = {
-  healthy: '#5fb87a',
-  degraded: '#d4a847',
-  incident: '#c95f5f',
-  paused: '#5fb87a', // Using emerald for paused as per prompt "stable"
-  neutral: '#5e6360',
+  healthy: 'var(--color-status-healthy)',
+  degraded: 'var(--color-status-degraded)',
+  incident: 'var(--color-status-incident)',
+  paused: 'var(--color-status-healthy)',
+  neutral: 'var(--color-status-neutral)',
 };
 
 const TIER_SIZES: Record<AgentTier, number> = {
@@ -58,7 +58,7 @@ const Edge = ({
 
   const opacity = isHighlighted ? 1 : isDimmed ? 0.1 : (isReportsTo ? 0.15 : 0.3);
   const strokeWidth = isHighlighted ? 2.5 : (isReportsTo ? 1 : 1.5);
-  const color = isBlocked ? '#c95f5f' : (isHighlighted ? '#5fb87a' : '#1f2a1e');
+  const color = isBlocked ? 'var(--color-status-incident)' : (isHighlighted ? 'var(--color-emerald-accent)' : 'var(--color-surface-border)');
 
   return (
     <g style={{ opacity }} className="transition-opacity duration-500">
@@ -92,7 +92,7 @@ const Edge = ({
       {!isBlocked && !isReportsTo && (
         <motion.circle
           r={isHighlighted ? 3 : 1.5}
-          fill={isHighlighted ? "#5fb87a" : "#3d9960"}
+          fill={isHighlighted ? "var(--color-emerald-accent)" : "var(--color-emerald-mid)"}
           initial={{ offsetDistance: "0%" }}
           animate={{ offsetDistance: "100%" }}
           transition={{ 
@@ -113,8 +113,8 @@ const Edge = ({
         <g transform={`translate(${(fromPos.x + toPos.x) / 2}, ${(fromPos.y + toPos.y) / 2})`}>
           <motion.circle 
             r={12} 
-            fill="#0c0f0d" 
-            stroke="#c95f5f" 
+            fill="var(--color-surface-base)" 
+            stroke="var(--color-status-incident)" 
             strokeWidth={1}
             animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -193,7 +193,7 @@ const AgentNode = ({
       {agent.tier === 'pipeline' ? (
         <circle
           r={size}
-          fill="#111410"
+          fill="var(--color-surface-raised)"
           stroke={statusColor}
           strokeWidth={1}
         />
@@ -212,8 +212,8 @@ const AgentNode = ({
           {/* Main Diamond Shape */}
           <motion.path
             d={`M 0 ${-size} L ${size} 0 L 0 ${size} L ${-size} 0 Z`}
-            fill="#111410"
-            stroke={isSelected ? "#5fb87a" : statusColor}
+            fill="var(--color-surface-raised)"
+            stroke={isSelected ? "var(--color-emerald-accent)" : statusColor}
             strokeWidth={isSelected ? 2.5 : 1.5}
             animate={isSelected ? { scale: 1.1 } : { scale: 1 }}
             className="drop-shadow-[0_0_15px_rgba(95,184,122,0.3)]"
@@ -245,7 +245,7 @@ const AgentNode = ({
           <text
             y={-5}
             textAnchor="middle"
-            fill="#e8e6e1"
+            fill="var(--color-text-primary)"
             className="text-[14px] font-bold font-ui uppercase tracking-tighter"
           >
             {agent.name}
@@ -253,7 +253,7 @@ const AgentNode = ({
           <text
             y={15}
             textAnchor="middle"
-            fill="#9a9890"
+            fill="var(--color-text-secondary)"
             className="text-[8px] font-mono uppercase opacity-60"
           >
             {agent.model}
@@ -283,13 +283,13 @@ const AgentNode = ({
               width={120}
               height={35}
               rx={4}
-              fill="#161b14"
-              stroke="#1f2a1e"
+              fill="var(--color-surface-overlay)"
+              stroke="var(--color-surface-border)"
             />
-            <text y={-size - 30} textAnchor="middle" fill="#e8e6e1" className="text-[10px] font-bold">
+            <text y={-size - 30} textAnchor="middle" fill="var(--color-text-primary)" className="text-[10px] font-bold">
               {agent.name}
             </text>
-            <text y={-size - 18} textAnchor="middle" fill="#7ec99a" className="text-[8px] font-mono">
+            <text y={-size - 18} textAnchor="middle" fill="var(--color-text-mono)" className="text-[8px] font-mono">
               {agent.status.toUpperCase()} • {agent.lastHeartbeat}
             </text>
           </motion.g>
@@ -543,8 +543,8 @@ export const NeuralCommandMap: React.FC = () => {
             >
               {/* Background Shimmer & Grid */}
               <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#111410_0%,#0c0f0d_70%)] opacity-50" />
-                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#5fb87a 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }} />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,var(--color-surface-raised)_0%,var(--color-surface-base)_70%)] opacity-50" />
+                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(var(--color-emerald-accent) 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }} />
               </div>
 
               <svg 
@@ -559,8 +559,8 @@ export const NeuralCommandMap: React.FC = () => {
               >
                 <defs>
                   <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                    <stop offset="0%" stopColor="var(--color-text-primary)" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="var(--color-text-primary)" stopOpacity="0" />
                   </linearGradient>
                   <filter id="glow">
                     <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
@@ -587,7 +587,7 @@ export const NeuralCommandMap: React.FC = () => {
                         key={i}
                         d={`M ${100 + i * 200} 0 Q ${500} ${500} ${900 - i * 200} 1000`}
                         fill="none"
-                        stroke="#5fb87a"
+                        stroke="var(--color-emerald-accent)"
                         strokeWidth={0.5}
                         animate={{
                           opacity: [0.1, 0.3, 0.1],
@@ -635,7 +635,7 @@ export const NeuralCommandMap: React.FC = () => {
                   <motion.path
                     d="M 350 840 Q 500 820 650 840 L 650 960 Q 500 980 350 960 Z"
                     fill="none"
-                    stroke="#1f2a1e"
+                    stroke="var(--color-surface-border)"
                     strokeWidth={1}
                     strokeDasharray="4,4"
                     opacity={0.3}
@@ -947,7 +947,7 @@ export const NeuralCommandMap: React.FC = () => {
                     <div className="text-4xl mb-2">{selectedAgent.emoji}</div>
                     <h2 className="text-display-sm font-bold text-text-primary tracking-tighter">{selectedAgent.name}</h2>
                     <div className="flex items-center gap-2 mt-1">
-                      <div className={cn("px-2 py-0.5 rounded text-[9px] font-bold uppercase", `bg-[${STATUS_COLORS[selectedAgent.status]}20] text-[${STATUS_COLORS[selectedAgent.status]}]`)} style={{ backgroundColor: `${STATUS_COLORS[selectedAgent.status]}20`, color: STATUS_COLORS[selectedAgent.status] }}>
+                      <div className={cn("px-2 py-0.5 rounded text-[9px] font-bold uppercase")} style={{ backgroundColor: `var(--color-status-${selectedAgent.status}-bg)`, color: STATUS_COLORS[selectedAgent.status] }}>
                         {selectedAgent.status}
                       </div>
                       <span className="text-[10px] font-mono text-text-muted uppercase">{selectedAgent.model}</span>
