@@ -132,7 +132,7 @@
   --color-text-primary:    #1c2018;
   --color-text-secondary:  #4d5249;
   --color-text-muted:      #8a8d86;
-  --color-text-inverse:    #f5f2ed;
+  --color-text-inverse:    #0c0f0d;   /* Text on light/accent backgrounds - changed to dark for contrast */
   --color-text-mono:       #2a6b47; /* text-data */
 
   /* ── EMERALD ACCENT (adjusted for light) ──────────────── */

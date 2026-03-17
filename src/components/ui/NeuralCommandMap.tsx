@@ -4,6 +4,28 @@ import { cn } from '@/src/lib/utils';
 import { Agent, Relationship, AGENTS, RELATIONSHIPS, AgentTier, AgentStatus } from '@/src/types/agents';
 import { ForgeIcon } from './ForgeIcon';
 
+/**
+ * NEURAL COMMAND MAP & CHAT SYSTEM
+ * --------------------------------
+ * Location: src/components/ui/NeuralCommandMap.tsx
+ * 
+ * This component is the primary interface for agent interaction and network visualization.
+ * It handles three main views:
+ * 1. MAP: SVG-based neural network visualization with draggable nodes and relationship edges.
+ * 2. ROSTER: Categorized list of all active agents with status indicators.
+ * 3. CHAT: Multi-channel messaging interface for direct agent directives and broadcast mode.
+ * 
+ * Key Features:
+ * - Real-time status synchronization using the AgentStatus type system.
+ * - Contextual "Intelligence Tools" sidebar that adapts to the selected agent.
+ * - SVG relationship mapping with "Blocked Policy" enforcement visualization.
+ * - Responsive design with mobile-optimized headers and collapsible sidebars.
+ * 
+ * Engineering Note: 
+ * Status colors are driven by the FORGE design system tokens defined in src/index.css.
+ * Use the STATUS_BG_CLASSES and STATUS_TEXT_CLASSES maps for consistent color application.
+ */
+
 // --- Constants & Helpers ---
 
 const STATUS_COLORS: Record<AgentStatus, string> = {
@@ -12,6 +34,22 @@ const STATUS_COLORS: Record<AgentStatus, string> = {
   incident: 'var(--color-status-incident)',
   paused: 'var(--color-status-healthy)',
   neutral: 'var(--color-status-neutral)',
+};
+
+const STATUS_BG_CLASSES: Record<AgentStatus, string> = {
+  healthy: 'bg-status-healthy',
+  degraded: 'bg-status-degraded',
+  incident: 'bg-status-incident',
+  paused: 'bg-status-healthy',
+  neutral: 'bg-status-neutral',
+};
+
+const STATUS_TEXT_CLASSES: Record<AgentStatus, string> = {
+  healthy: 'text-status-healthy',
+  degraded: 'text-status-degraded',
+  incident: 'text-status-incident',
+  paused: 'text-status-healthy',
+  neutral: 'text-status-neutral',
 };
 
 const TIER_SIZES: Record<AgentTier, number> = {
@@ -517,10 +555,10 @@ export const NeuralCommandMap: React.FC = () => {
             {/* Individual Agents */}
             {AGENTS.filter(a => a.tier !== 'pipeline').map(agent => (
               <div key={agent.id} className="flex items-center gap-3 group cursor-pointer" onClick={() => setActiveChannel(agent.id)}>
-                <div className={cn("w-2 h-2 rounded-full animate-pulse", `bg-[${STATUS_COLORS[agent.status]}]`)} style={{ backgroundColor: STATUS_COLORS[agent.status] }} />
+                <div className={cn("w-2 h-2 rounded-full animate-pulse", STATUS_BG_CLASSES[agent.status])} />
                 <div className="flex flex-col">
                   <span className={cn("text-[10px] font-bold uppercase group-hover:text-emerald-accent transition-colors leading-none", activeChannel === agent.id ? "text-emerald-accent" : "text-text-secondary")}>{agent.name}</span>
-                  <span className={cn("text-[8px] font-mono uppercase tracking-tighter mt-0.5")} style={{ color: STATUS_COLORS[agent.status] }}>
+                  <span className={cn("text-[8px] font-mono uppercase tracking-tighter mt-0.5", STATUS_TEXT_CLASSES[agent.status])}>
                     {agent.status}
                   </span>
                 </div>
@@ -711,7 +749,7 @@ export const NeuralCommandMap: React.FC = () => {
                         )}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={cn("w-2 h-2 rounded-full", `bg-[${STATUS_COLORS[agent.status]}]`)} style={{ backgroundColor: STATUS_COLORS[agent.status] }} />
+                          <div className={cn("w-2 h-2 rounded-full", STATUS_BG_CLASSES[agent.status])} />
                           <div>
                             <div className="text-text-primary font-bold text-label-md flex items-center gap-2">
                               {agent.name} <span className="text-lg">{agent.emoji}</span>
@@ -827,28 +865,31 @@ export const NeuralCommandMap: React.FC = () => {
                         {activeChannel === 'network' ? 'Neural Network' : AGENTS.find(a => a.id === activeChannel)?.name}
                       </h3>
                       <div className="flex items-center gap-2">
-                        <div className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: activeChannel === 'network' ? STATUS_COLORS.healthy : STATUS_COLORS[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'] }} />
-                        <span className="text-[9px] font-mono uppercase tracking-tighter truncate" style={{ color: activeChannel === 'network' ? STATUS_COLORS.healthy : STATUS_COLORS[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'] }}>
+                        <div className={cn("w-1 h-1 rounded-full animate-pulse", activeChannel === 'network' ? "bg-status-healthy" : STATUS_BG_CLASSES[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'])} />
+                        <span className={cn("text-[9px] font-mono uppercase tracking-tighter truncate", activeChannel === 'network' ? "text-status-healthy" : STATUS_TEXT_CLASSES[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'])}>
                           {activeChannel === 'network' ? 'Operational' : AGENTS.find(a => a.id === activeChannel)?.status}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-6 shrink-0 ml-auto sm:ml-0">
                     {activeChannel !== 'network' && (
-                      <div className="flex items-center gap-6 mr-2">
+                      <div className="hidden xs:flex items-center gap-4 sm:gap-6 mr-2">
                         <div className="flex flex-col items-end">
-                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Runtime + Cost</span>
-                          <span className="text-[9px] text-text-mono font-mono mt-0.5">42h / $0.12</span>
+                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Runtime</span>
+                          <span className="text-[9px] text-text-mono font-mono mt-0.5">42h</span>
                         </div>
                         <div className="flex flex-col items-end">
                           <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Heartbeat</span>
-                          <span className="text-[9px] text-text-mono font-mono mt-0.5">14s ago</span>
+                          <span className="text-[9px] text-text-mono font-mono mt-0.5">14s</span>
                         </div>
                       </div>
                     )}
                     <div className="flex items-center gap-1 sm:gap-2">
                       <button className="hidden sm:block p-2 text-text-muted hover:text-text-primary transition-colors"><ForgeIcon name="videocamera-record" size="md" /></button>
+                      <button className="p-2 text-text-muted hover:text-text-primary transition-colors lg:hidden" onClick={() => setShowChatSidebar(true)}>
+                        <ForgeIcon name="settings" size="md" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -919,10 +960,10 @@ export const NeuralCommandMap: React.FC = () => {
                     />
                     <button 
                       onClick={handleSendMessage}
-                      className="px-6 bg-emerald-accent text-surface-base rounded-xl font-bold text-label-sm hover:bg-emerald-mid transition-all flex items-center gap-2 shadow-lg shadow-emerald-accent/10 active:scale-95"
+                      className="px-4 sm:px-6 bg-emerald-accent text-text-inverse rounded-xl font-bold text-label-sm hover:bg-emerald-mid transition-all flex items-center gap-2 shadow-lg shadow-emerald-accent/10 active:scale-95"
                     >
                       <ForgeIcon name="send" size="md" />
-                      SEND
+                      <span className="hidden xs:inline">SEND</span>
                     </button>
                   </div>
                 </div>
