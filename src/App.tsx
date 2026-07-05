@@ -15,6 +15,7 @@ import { Tasks } from './pages/Tasks';
 import { Clients } from './pages/Clients';
 import { BotTeam } from './pages/BotTeam';
 import { Content } from './pages/Content';
+import { Dispatch } from './pages/Dispatch';
 import { Finance } from './pages/Finance';
 import { Incidents } from './pages/Incidents';
 import { Deployments } from './pages/Deployments';
@@ -122,6 +123,12 @@ function Dashboard() {
         keysPressed = {};
       }
 
+      // g d => dispatch page
+      if (keysPressed['g'] && keysPressed['d']) {
+        navigate('/dispatch');
+        keysPressed = {};
+      }
+
       // g o => overview page
       if (keysPressed['g'] && keysPressed['o']) {
         navigate('/');
@@ -188,7 +195,8 @@ function Dashboard() {
     location.pathname === '/tasks' ? 'tasks' : 
     location.pathname === '/clients' ? 'clients' : 
     location.pathname === '/bots' ? 'bots' : 
-    location.pathname === '/content' ? 'content' : 
+    location.pathname === '/dispatch' ? 'dispatch' :
+    location.pathname === '/content' ? 'content' :
     location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 
     location.pathname === '/ui/neural-map' ? 'ui-neural' : 
@@ -251,6 +259,7 @@ function Dashboard() {
             <Route path="/tasks" element={<Tasks data={data} />} />
             <Route path="/clients" element={<Clients data={data} />} />
             <Route path="/bots" element={<BotTeam />} />
+            <Route path="/dispatch" element={<Dispatch />} />
             <Route path="/content" element={<Content data={data} />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/library" element={<ComponentLibrary />} />

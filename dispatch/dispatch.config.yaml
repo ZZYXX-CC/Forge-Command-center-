@@ -1,0 +1,70 @@
+# DISPATCH routing policy — single source of truth.
+# Read by the Python router (homelab) and surfaced in the Command Center panel.
+# This is DATA, not code. Editing a ranking here never requires a deploy.
+# Model names are accurate as of 2026-07 and will drift; only this file changes when they do.
+
+# Cheapest-first preference for a given capability. The router walks a tier's
+# chain in order, skipping any surface that is down / cooldown / unauth / over quota / over cap.
+billing_order: [free_local, subscription, free_api, metered]
+
+# ---------------------------------------------------------------------------
+# SURFACES: a "surface" is HOW a model is reached (this is separate from the model).
+# The same model can appear via a flat-rate subscription CLI and via a metered API.
+# host: mac  -> runs on the Mac, reached from the homelab router over the LAN.
+# status field reflects current reality; the router probes and overrides it live.
+# ---------------------------------------------------------------------------
+surfaces:
+  claude-code:   {kind: cli, host: mac, subscription: claude,  headless: true,  status: check}
+  codex:         {kind: cli, host: mac, subscription: openai,  headless: true,  status: needs_reauth}  # openai-codex OAuth expired 2026-07-05
+  cursor:        {kind: cli, host: mac, subscription: cursor,  background_agent: true, status: check}
+  cursor-pinned: {kind: cli, host: mac, subscription: cursor,  billing: metered, status: check}
+  antigravity:   {kind: cli, host: mac, free: true,            status: check}
+  anthropic-api: {kind: api, credential: env,                  status: to_configure}
+  openai-api:    {kind: api, credential: env,                  status: to_configure}
+  openrouter:    {kind: api, base_url: https://openrouter.ai/api/v1,             status: configured}    # key wired 2026-07-05
+  nim:           {kind: api, base_url: https://integrate.api.nvidia.com/v1, rpm: 40, status: configured}    # key wired 2026-07-05
+  ollama:        {kind: local, host: mac, base_url: http://192.168.1.170:11434,   status: configured}    # Mac LAN IP — needs DHCP reservation (drifts)
+
+# ---------------------------------------------------------------------------
+# TIERS: capability class -> ranked fallback chain.
+# `when:` gates an entry to harder tasks. `role: second_opinion` = comparison, not primary.
+# ---------------------------------------------------------------------------
+tiers:
+
+  # Tier 1: planning / architecture / security-critical design. NEVER writes code.
+  planning:
+    - {model: claude-sonnet-5, surface: claude-code,   billing: subscription}
+    - {model: claude-opus-4-8, surface: claude-code,   billing: subscription, when: hard}
+    - {model: claude-fable-5,  surface: claude-code,   billing: subscription, when: highest_stakes}
+    - {model: gpt-5.5,         surface: codex,         billing: subscription, role: second_opinion}
+    - {model: claude-sonnet-5, surface: anthropic-api, billing: metered}   # fallback if subscription capped/unavailable
+    - {model: gpt-5.5,         surface: openai-api,    billing: metered}   # fallback
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api}   # free open last-resort planner if all Claude/GPT surfaces are down
+
+  # Tier 2: execution (writing, refactoring, shipping code).
+  execution_routine:
+    - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
+    - {model: gpt-5.5-codex,     surface: codex,         billing: subscription}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}   # strong agentic coder
+    - {model: "nvidia/nemotron-3-ultra-550b-a55b:free", surface: openrouter, billing: free_api}
+    - {model: "moonshotai/kimi-k2.6",        surface: nim, billing: free_api, rpm: 40}   # agentic + long context
+    - {model: "qwen/qwen3-coder:free",                   surface: openrouter, billing: free_api}
+    - {model: "z-ai/glm-5.2",                surface: nim, billing: free_api, rpm: 40}   # alternate
+    - {model: "qwen/qwen3.5-397b-a17b",      surface: nim, billing: free_api, rpm: 40}   # alternate
+    - {model: antigravity,       surface: antigravity,   billing: free}
+    - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}   # hard exec, deliberate
+
+  # Vision / multimodal (screenshots, UI mockups, design review).
+  vision:
+    - {model: gemma4:12b, surface: ollama, billing: free_local}   # NOTE: gemma4:12b pull still pending on this box
+
+# ---------------------------------------------------------------------------
+# QUOTA: track subscription usage caps as first-class quota, same as API rate limits.
+# A repeated spill from a subscription surface to a metered one is the logged signal
+# that a subscription needs upgrading.
+# ---------------------------------------------------------------------------
+quota:
+  windows: [minute, day, week]
+  spill_alert: true   # surface an alert when a subscription -> metered spill recurs
