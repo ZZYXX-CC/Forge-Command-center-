@@ -86,7 +86,7 @@ Everything else is optional glue.
 2. **DISPATCH** — `dispatch/` in this repo; deployed LXC `192.168.1.178:4001`.
 3. **Mac executor** — `dispatch/executor/executor.py`; live copy `~/.dispatch-executor/` on Mac `192.168.1.170:4100`.
 4. **LiteLLM** — homelab LXC `:4000`; config `/opt/litellm/config.yaml`.
-5. **Convex** — `convex/` in this repo; self-host on homelab when ready (Phase B).
+5. **Convex** — `convex/` in this repo; self-hosted on homelab LXC `forge-convex` (`192.168.1.179`, Phase B).
 6. **Command Center** — Vite + React 19 SPA; `npm run dev`, routes under `src/pages/`.
 7. **GitHub** — client repos + this repo; PRs/issues are the external code audit and collaboration layer. No Forgejo/Gitea/GitLab self-hosting path for now.
 
@@ -263,10 +263,10 @@ Execute in order; check off in `docs/DISPATCH_HANDOFF.md` when done.
 - [ ] **Patch Codex CLI surface** — explicit `gpt-5.5`, repo `cwd`, writable workspace mode.
 - [ ] **Install Mac executor LaunchAgent** — keep `:4100` alive across restarts/logouts.
 - [ ] **Re-auth Claude Code on Mac** when session limit clears; Codex/Cursor/Hermes-GPT5.5 should cover fallback execution.
-- [ ] **Add Convex `workItems` + `workEvents` + `routingDecisions` + `executorRuns` tables** — `convex/schema.ts`, mutations in `convex/work.ts` (new).
+- [x] **Add Convex `workItems` + `workEvents` + `routingDecisions` + `executorRuns` tables** — `convex/schema.ts`, mutations in `convex/work.ts` (new).
 - [ ] **Ingest DISPATCH decisions into Convex** — cron or router hook; start with polling `/decisions` from a Convex action if push is not ready.
-- [ ] **Build `/tasks` cockpit** — board/list/detail timeline from Convex; show owner agent, orchestrator, status, surface/model, GitHub issue/PR, blockers, verification.
-- [ ] **Self-host Convex on homelab** — Docker on forge-node-01; set `VITE_CONVEX_URL` / `CONVEX_SELF_HOSTED_URL` (Phase B infra).
+- [x] **Build `/tasks` cockpit** — board/list/detail timeline from Convex; show owner agent, orchestrator, status, surface/model, GitHub issue/PR, blockers, verification.
+- [x] **Self-host Convex on homelab** — Docker on forge-node-01; set `VITE_CONVEX_URL` / `CONVEX_SELF_HOSTED_URL` (Phase B infra). LXC `forge-convex` at `192.168.1.179`, backend `:3210`, site `:3211`, dashboard `:6791`.
 - [ ] **Telegram intake → `workItems`** — Hermes webhook creates row, KERN delegates via skill (Phase A + B).
 - [ ] **Rotate shared Telegram bot tokens** before enabling phone intake (hazard: archived OpenClaw shares tokens with live Hermes).
 - [ ] **Fix pre-existing frontend TS errors** — unblocks `npm run build` for deploy.

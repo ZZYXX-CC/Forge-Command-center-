@@ -15,6 +15,7 @@ import type * as money from "../money.js";
 import type * as p2p from "../p2p.js";
 import type * as sites from "../sites.js";
 import type * as trading from "../trading.js";
+import type * as work from "../work.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   p2p: typeof p2p;
   sites: typeof sites;
   trading: typeof trading;
+  work: typeof work;
 }>;
 
 /**

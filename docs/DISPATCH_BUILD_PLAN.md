@@ -140,6 +140,8 @@ Stand up LiteLLM on the homelab node in front of Anthropic, OpenAI, OpenRouter, 
 ### Phase 2: Self-hosted Convex on the homelab
 Run the Convex Docker compose on forge-node-01. Point the Command Center at it (`CONVEX_SELF_HOSTED_URL`, admin key). Add the schema above. Deliverable: local Convex running, existing agent panel still working, new tables ready.
 
+**DONE 2026-07-05.** LXC `forge-convex` (VMID 102, static `192.168.1.179`) on forge-node-01 runs self-hosted Convex via Docker Compose. Backend: `http://192.168.1.179:3210`; HTTP actions/site proxy: `http://192.168.1.179:3211`; dashboard: `http://192.168.1.179:6791`. Compose lives in repo at `infra/convex/docker-compose.yml` and deploy helper is `scripts/deploy_convex_homelab.sh`; live files live in LXC `/opt/forge-convex`. Admin key is stored only inside the LXC at `/opt/forge-convex/admin.key` (600). Deployed the repo `convex/` schema/functions to the self-hosted backend and seeded a `workItems` row for Phase B. Verification: backend `/version` returns `unknown`, dashboard returns HTTP 200, `npx convex deploy` completed schema validation and added Work Registry indexes, `npx convex run work:listWorkItems` returned the seeded item.
+
 ### Phase 3: The Python router (the one custom piece)
 `dispatch/` package on the homelab beside Hermes:
 - `classify(task)`: rules first (image present, source channel, keyword and metadata heuristics), cheap local LLM only when rules are inconclusive, defer to SAGE when low-confidence.

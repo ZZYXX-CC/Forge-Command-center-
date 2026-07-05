@@ -21,6 +21,10 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
   - **LXC 101 `dispatch-litellm` (192.168.1.178, static lease)** — the DISPATCH host.
     - `litellm` systemd service on `:4000` — OpenAI API gateway, fallback across Ollama/NIM/OpenRouter. Config `/opt/litellm/config.yaml`, keys `/opt/litellm/litellm.env` (600).
     - `dispatch-service` systemd service on `:4001` — the router as an OpenAI-compatible endpoint (see below). Code `/opt/dispatch/router/`, env `/opt/dispatch/executor.env` (600, holds EXECUTOR_TOKEN).
+  - **LXC 102 `forge-convex` (192.168.1.179, static)** — self-hosted Convex for FORGE Work Registry.
+    - Docker Compose stack in `/opt/forge-convex` runs `convex-backend` on `:3210`, Convex site/http actions on `:3211`, and dashboard on `:6791`.
+    - Repo source files: `infra/convex/docker-compose.yml`, deploy helper `scripts/deploy_convex_homelab.sh`.
+    - Admin key lives only in LXC `/opt/forge-convex/admin.key` (600). Do not commit or paste it.
   - **LXC 103 `adguard`** — DHCP + DNS for the LAN. Static leases live here (`/opt/AdGuardHome/data/leases.json`). Config backups `.bak-*` alongside.
   - ZFS pool `tank` (~900GB, mirror) with `/tank/nas` (media offloaded from the SSD lives here), plus the `dev-archive`, and the SSD reformat backups.
 
@@ -29,6 +33,7 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
 - LiteLLM: `curl http://192.168.1.178:4000/health/liveliness` -> "I'm alive!"
 - DISPATCH service: `curl http://192.168.1.178:4001/health` ; models `GET /v1/models`; **decisions log `GET /decisions`** (JSON, for the panel); chat `POST /v1/chat/completions` (model `dispatch-auto`, returns an `x_dispatch` field with tier/chosen_surface/via/latency/status).
 - Mac executor: `curl http://192.168.1.170:4100/health` ; run `POST /run` with bearer auth and body `{"surface":"claude-code|codex|cursor|hermes-kern-gpt55","prompt":"...","model":"gpt-5.5"}`.
+- Convex backend: `curl http://192.168.1.179:3210/version` -> currently `unknown`; dashboard `http://192.168.1.179:6791`; site/actions `http://192.168.1.179:3211`.
 
 ## Code (source of truth = this repo, under `dispatch/`)
 
