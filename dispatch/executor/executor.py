@@ -39,7 +39,7 @@ def build_cmd(surface: str, prompt: str, model: str | None):
     if surface == "codex":
         return ["codex", "exec", "--skip-git-repo-check", prompt]
     if surface in ("cursor", "cursor-pinned"):
-        return ["cursor-agent", "-p", prompt, "--output-format", "text"]
+        return ["cursor-agent", "--trust", "-p", prompt, "--output-format", "text"]
     return None
 
 
@@ -106,7 +106,8 @@ class Handler(BaseHTTPRequestHandler):
         cwd = body.get("cwd") or body.get("repo")
         if not surface or not prompt:
             return self._send(400, {"error": "surface and prompt required"})
-        self._send(200, run_surface(surface, prompt, model, cwd=cwd))
+        timeout = int(body.get("timeout") or 300)
+        self._send(200, run_surface(surface, prompt, model, timeout=timeout, cwd=cwd))
 
     def log_message(self, *a):
         pass

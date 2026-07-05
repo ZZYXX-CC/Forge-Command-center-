@@ -1,6 +1,10 @@
 # DISPATCH — Agent Handoff Log
 
-Purpose: let any agent (Codex, a fresh Claude session, a Hermes agent) continue the DISPATCH build without the originating conversation. Pairs with `docs/DISPATCH_BUILD_PLAN.md` (the plan) and `dispatch/dispatch.config.yaml` (the routing policy). Last updated 2026-07-05.
+Purpose: let any agent (Codex, a fresh Claude session, a Hermes agent) continue the DISPATCH build without the originating conversation. Pairs with **`docs/FORGE_NATIVE_EXECUTION_PLAN.md`** (the lean FORGE-native roadmap — start here for overall architecture), `docs/DISPATCH_BUILD_PLAN.md` (DISPATCH routing phases), and `dispatch/dispatch.config.yaml` (the routing policy). Last updated 2026-07-05.
+
+**Architecture (critical path):** Telegram + Command Center → Hermes FORGE agents → DISPATCH → Ollama/NIM/OpenRouter/Codex/Claude Code/Cursor → Convex log → Command Center visibility. See `docs/FORGE_NATIVE_EXECUTION_PLAN.md` for phases A–F and the immediate checklist.
+
+**Not critical path:** **Antfarm** and **Paperclip** are optional/reference layers only — keep Antfarm workflow patterns (gates, retries, step schemas) and Paperclip concepts (org, tickets, budget, heartbeat, audit), but do not block shipping on either. Build the lean Convex FORGE Work Registry first (`docs/FORGE_NATIVE_EXECUTION_PLAN.md` Phase B).
 
 ## TL;DR state
 
@@ -70,6 +74,8 @@ Then delegate, in order (each is a self-contained or repo-scoped task):
 - Commit `convex/` + `api/` to GitHub (they're local-only).
 
 ## Remaining build phases (prioritized)
+
+> **Roadmap:** FORGE-native phases A–F and the immediate checklist live in **`docs/FORGE_NATIVE_EXECUTION_PLAN.md`**. The numbered items below are DISPATCH-specific; align them with Phase A–C of that doc.
 
 1. **DISPATCH panel (Phase 6, visibility).** Add a page/route in the Command Center that fetches `http://192.168.1.178:4001/decisions` (react-query, `refetchInterval` ~10s) and renders the routing history (ts, category/complexity, chosen_surface, via, served_by, latency, status). Optionally a live surface-status strip. Wire into `App.tsx` routes + `DomainNav` (add a `g d` shortcut). Use `ForgeIcon`/Tailwind to match. **DONE 2026-07-05:** built as `src/pages/Dispatch.tsx`, wired into `App.tsx` (route `/dispatch`, `g d` shortcut, activeNavId) + `DomainNav` (Solar `routing-2` icon), react-query 10s refetch, endpoint overridable via `VITE_DISPATCH_URL`, TypeScript-clean (0 errors in new files). View: `npm run dev` then `/dispatch` (browser must reach 192.168.1.178:4001 over LAN/Tailscale; CORS open). NOTE: the synced frontend has ~66 pre-existing TS errors of its own (WIP, e.g. Deployments/Messaging prop mismatches) — unrelated to DISPATCH, but `npm run build` will fail until they're fixed; `npm run dev` renders fine.
 2. **Commit `convex/` + `api/` to GitHub** (they're local-only). Also consider committing `dispatch/` + `docs/`.
