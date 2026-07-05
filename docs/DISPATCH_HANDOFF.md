@@ -81,6 +81,41 @@ Then delegate, in order (each is a self-contained or repo-scoped task):
 - **Claude Code watcher installed:** Hermes cron job `d74be3dbb1e8` (`Watch Claude Code executor recovery`) runs `scripts/watch_claude_code_surface.py` every 15m and alerts once when the Claude Code session limit clears. Current state: `session_limited` with output `You've hit your session limit · resets 5:10pm (America/Chicago)`.
 - **LXC deploy still needed:** source router/config now knows `hermes-kern-gpt55` and `codex-cli-gpt55`, but live `dispatch-service` on `192.168.1.178` still shows the previous 10 configured surfaces until `/opt/dispatch/router/` is updated and `dispatch-service` restarted. Direct SSH to `192.168.1.178` / `192.168.1.100` failed from this session due auth (`Permission denied`), so deploy requires Samuel's SSH path or running the copy/restart from an authenticated shell.
 
+## SAGE handoff (2026-07-05)
+
+SAGE should continue orchestration from the current PR branch and treat KERN as an executor surface, not the global orchestrator.
+
+Current source state:
+- Branch: `dispatch-continuation-20260705`
+- PR: `https://github.com/ZZYXX-CC/Forge-Command-center-/pull/1`
+- Latest committed handoff: current branch HEAD (`docs: add SAGE orchestration handoff`; verify with `git log --oneline -1`).
+- Codebase Memory project: `Volumes-Patriot-2TB-Dev-Test-.openclaw-workspace-Forge-Command-center` was re-indexed after this update.
+- Working tree after commit should be clean except pre-existing untracked `communications/` and `scripts/`.
+
+What is live and verified:
+- Mac executor LaunchAgent `ai.forge.dispatch-executor` is running on `127.0.0.1:4100`.
+- Mac executor health returns `claude-code`, `codex`, `codex-cli-gpt55`, `cursor`, `hermes-kern-gpt55`, `kern-hermes-gpt55`.
+- `codex` surface verified through executor with GPT-5.5 + `workspace-write` sandbox.
+- `hermes-kern-gpt55` surface verified through executor using Hermes KERN profile + OpenAI-Codex GPT-5.5.
+- Claude Code watcher cron `d74be3dbb1e8` is active and silent while limited; it will alert the origin Telegram chat once Claude Code returns.
+
+Known blocker for Claude Code or SAGE to fix next:
+- Deploy updated DISPATCH router/config to the LXC service on `192.168.1.178`; this Hermes session could not SSH to `192.168.1.178` or Proxmox `192.168.1.100` (`Permission denied`).
+- Until that deploy happens, the live `/surfaces` endpoint on `192.168.1.178:4001` still reflects the previous config and does not list the new `hermes-kern-gpt55` / `codex-cli-gpt55` routing policy, even though the Mac executor itself supports and verifies both surfaces.
+
+Suggested fix path from an authenticated shell:
+```bash
+cd "/Volumes/Patriot 2TB/Dev Test/.openclaw/workspace/Forge-Command-center"
+scp dispatch/dispatch.config.yaml dispatch/router/dispatch_router.py dispatch/router/dispatch_service.py root@192.168.1.178:/opt/dispatch/router/
+ssh root@192.168.1.178 'systemctl restart dispatch-service && systemctl status dispatch-service --no-pager'
+curl -s http://192.168.1.178:4001/surfaces | python3 -m json.tool
+```
+
+Expected post-fix verification:
+- `/surfaces` includes `hermes-kern-gpt55` and `codex-cli-gpt55`.
+- `dispatch/dispatch_status.py` still reports LiteLLM, DISPATCH, and Executor as UP.
+- A `dispatch-auto` smoke task can route through executor-backed GPT-5.5 when local Ollama/Cursor are skipped or unavailable.
+
 ## Remaining build phases (prioritized)
 
 > **Roadmap:** FORGE-native phases A–F and the immediate checklist live in **`docs/FORGE_NATIVE_EXECUTION_PLAN.md`**. The numbered items below are DISPATCH-specific; align them with Phase A–C of that doc.
