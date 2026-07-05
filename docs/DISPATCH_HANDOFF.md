@@ -79,7 +79,7 @@ Then delegate, in order (each is a self-contained or repo-scoped task):
 - **Codex writable GPT-5.5 fixed:** `dispatch/executor/executor.py` and live `~/.dispatch-executor/executor.py` run Codex as `codex exec --skip-git-repo-check --sandbox workspace-write -m gpt-5.5 ...` through Samuel's login shell. Verification via executor returned `CODEX_EXECUTOR_OK`, model `gpt-5.5`, sandbox `workspace-write`, exit 0.
 - **KERN executor surface added on Mac:** live executor supports `hermes-kern-gpt55` / `kern-hermes-gpt55`, running `hermes chat --profile kern --provider openai-codex --model gpt-5.5 ...` through Samuel's login shell. Verification via executor returned `HERMES_KERN_EXECUTOR_OK`, exit 0.
 - **Claude Code watcher installed:** Hermes cron job `d74be3dbb1e8` (`Watch Claude Code executor recovery`) runs `scripts/watch_claude_code_surface.py` every 15m and alerts once when the Claude Code session limit clears. Current state: `session_limited` with output `You've hit your session limit · resets 5:10pm (America/Chicago)`.
-- **LXC deploy still needed:** source router/config now knows `hermes-kern-gpt55` and `codex-cli-gpt55`, but live `dispatch-service` on `192.168.1.178` still shows the previous 10 configured surfaces until `/opt/dispatch/router/` is updated and `dispatch-service` restarted. Direct SSH to `192.168.1.178` / `192.168.1.100` failed from this session due auth (`Permission denied`), so deploy requires Samuel's SSH path or running the copy/restart from an authenticated shell.
+- **LXC deploy path:** use `dispatch/deploy_lxc_via_proxmox.sh`. Direct SSH to `root@192.168.1.178` is not required and may fail; the supported path SSHes to `forge-node-01` and uses `pct push` / `pct exec` for LXC 101. Important paths: config goes to `/opt/dispatch/dispatch.config.yaml`; router files go to `/opt/dispatch/router/`.
 
 ## SAGE handoff (2026-07-05)
 
@@ -99,19 +99,16 @@ What is live and verified:
 - `hermes-kern-gpt55` surface verified through executor using Hermes KERN profile + OpenAI-Codex GPT-5.5.
 - Claude Code watcher cron `d74be3dbb1e8` is active and silent while limited; it will alert the origin Telegram chat once Claude Code returns.
 
-Known blocker for Claude Code or SAGE to fix next:
-- Deploy updated DISPATCH router/config to the LXC service on `192.168.1.178`; this Hermes session could not SSH to `192.168.1.178` or Proxmox `192.168.1.100` (`Permission denied`).
-- Until that deploy happens, the live `/surfaces` endpoint on `192.168.1.178:4001` still reflects the previous config and does not list the new `hermes-kern-gpt55` / `codex-cli-gpt55` routing policy, even though the Mac executor itself supports and verifies both surfaces.
+LXC deploy note:
+- Do not deploy by direct SSH to `root@192.168.1.178`; that path may reject the Mac key. Use the Proxmox-mediated deploy helper below. It copies files to `forge-node-01`, pushes them into LXC 101 with `pct push`, restarts `dispatch-service`, and verifies the required surfaces.
 
-Suggested fix path from an authenticated shell:
+Supported deploy path:
 ```bash
 cd "/Volumes/Patriot 2TB/Dev Test/.openclaw/workspace/Forge-Command-center"
-scp dispatch/dispatch.config.yaml dispatch/router/dispatch_router.py dispatch/router/dispatch_service.py root@192.168.1.178:/opt/dispatch/router/
-ssh root@192.168.1.178 'systemctl restart dispatch-service && systemctl status dispatch-service --no-pager'
-curl -s http://192.168.1.178:4001/surfaces | python3 -m json.tool
+dispatch/deploy_lxc_via_proxmox.sh
 ```
 
-Expected post-fix verification:
+Expected verification:
 - `/surfaces` includes `hermes-kern-gpt55` and `codex-cli-gpt55`.
 - `dispatch/dispatch_status.py` still reports LiteLLM, DISPATCH, and Executor as UP.
 - A `dispatch-auto` smoke task can route through executor-backed GPT-5.5 when local Ollama/Cursor are skipped or unavailable.
