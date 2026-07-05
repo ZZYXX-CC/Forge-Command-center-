@@ -28,6 +28,15 @@ TOKEN = os.environ.get("EXECUTOR_TOKEN")
 if not TOKEN and (CONF / "token").exists():
     TOKEN = (CONF / "token").read_text().strip()
 
+SUPPORTED_SURFACES = [
+    "claude-code",
+    "codex",
+    "codex-cli-gpt55",
+    "cursor",
+    "hermes-kern-gpt55",
+    "kern-hermes-gpt55",
+]
+
 # Ensure the CLIs are on PATH regardless of the launchd/nohup environment.
 for _p in [str(HOME / ".local/bin"), str(HOME / ".npm-global/bin"),
            "/opt/homebrew/bin", "/usr/local/bin"]:
@@ -107,9 +116,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._send(200, {"status": "ok", "surfaces": [
-                "claude-code", "codex", "codex-cli-gpt55", "cursor", "hermes-kern-gpt55", "kern-hermes-gpt55"
-            ]})
+            self._send(200, {"status": "ok", "surfaces": SUPPORTED_SURFACES})
         else:
             self._send(404, {"error": "not found"})
 
