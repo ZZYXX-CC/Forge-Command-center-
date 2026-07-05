@@ -69,11 +69,6 @@ function Dashboard() {
         keysPressed = {};
       }
 
-      // g d => deployments page
-      if (keysPressed['g'] && keysPressed['d']) {
-        navigate('/deployments');
-        keysPressed = {};
-      }
 
       // g m => messaging page
       if (keysPressed['g'] && keysPressed['m']) {
@@ -101,7 +96,7 @@ function Dashboard() {
 
       // g p => p2p trading page
       if (keysPressed['g'] && keysPressed['p']) {
-        navigate('/trading/p2p');
+        navigate('/p2p');
         keysPressed = {};
       }
 

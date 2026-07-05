@@ -135,7 +135,7 @@ export const Toggle = ({
       )}
     >
       <div className={cn(
-        "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-all duration-300 shadow-sm",
+        "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-text-primary transition-all duration-300 shadow-sm",
         checked ? "translate-x-4" : "translate-x-0"
       )} />
     </div>
