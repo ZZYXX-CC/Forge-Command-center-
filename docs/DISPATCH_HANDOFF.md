@@ -28,7 +28,7 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
 
 - LiteLLM: `curl http://192.168.1.178:4000/health/liveliness` -> "I'm alive!"
 - DISPATCH service: `curl http://192.168.1.178:4001/health` ; models `GET /v1/models`; **decisions log `GET /decisions`** (JSON, for the panel); chat `POST /v1/chat/completions` (model `dispatch-auto`, returns an `x_dispatch` field with tier/chosen_surface/via/latency/status).
-- Mac executor: `curl http://192.168.1.170:4100/health` ; run `POST /run` with header `Authorization: Bearer <token>` and body `{"surface":"claude-code|codex|cursor","prompt":"...","model":"sonnet"}`.
+- Mac executor: `curl http://192.168.1.170:4100/health` ; run `POST /run` with bearer auth and body `{"surface":"claude-code|codex|cursor|hermes-kern-gpt55","prompt":"...","model":"gpt-5.5"}`.
 
 ## Code (source of truth = this repo, under `dispatch/`)
 
@@ -70,8 +70,16 @@ Run as ORCHESTRATOR: delegate SELF-CONTAINED build tasks to DISPATCH (via `dispa
 Then delegate, in order (each is a self-contained or repo-scoped task):
 - Wrap `dispatch_delegate.py` as a Hermes skill so KERN/SAGE call it as a tool. **DONE 2026-07-05 by KERN:** created profile-local Hermes skill `dispatch-delegate` under KERN (`~/.hermes/profiles/kern/skills/devops/dispatch-delegate/SKILL.md`) and added `--cwd/--repo` forwarding to `dispatch/dispatch_delegate.py`. Note: SAGE profile still needs the same skill installed/copied if SAGE should load it directly.
 - Fix `dispatch_status.py` "Logged Decisions: 0" count bug. **DONE 2026-07-05 by KERN:** `dispatch_status.py` now reads the live `/decisions` shape (`{"decisions": [...]}`) with `logged_decisions` fallback. Verification: `python3 dispatch/dispatch_status.py` reports all services UP and `Logged Decisions: 12`.
-- Add a live `/surfaces` route to `dispatch_service.py` + a status strip in `Dispatch.tsx`. **DONE 2026-07-05 by KERN:** `/surfaces` returns configured surfaces with live executor/LiteLLM availability; `Dispatch.tsx` polls it every 10s and renders green/red surface chips. Redeployed `dispatch_service.py` to LXC and restarted `dispatch-service`. Verification: `GET /surfaces` returned 10 surfaces (`claude-code`, `codex`, `cursor`, `openrouter`, `nim`, `ollama` available; `antigravity` and unconfigured direct APIs unavailable). `npm run lint -- --pretty false` still fails only on pre-existing Convex/type export issues; no `src/pages/Dispatch.tsx` diagnostics.
+- Add a live `/surfaces` route to `dispatch_service.py` + a status strip in `Dispatch.tsx`. **DONE 2026-07-05 by KERN:** `/surfaces` returns configured surfaces with live executor/LiteLLM availability; `Dispatch.tsx` polls it every 10s and renders green/red surface chips. Redeployed `dispatch_service.py` to LXC and restarted `dispatch-service`. Verification: `GET /surfaces` returned 10 surfaces (`claude-code`, `codex`, `cursor`, `openrouter`, `nim`, `ollama` available; `antigravity` and unconfigured direct APIs unavailable).
 - Commit `convex/` + `api/` to GitHub (they're local-only).
+
+## Executor update (2026-07-05)
+
+- **Mac executor LaunchAgent installed:** `~/Library/LaunchAgents/ai.forge.dispatch-executor.plist` keeps `~/.dispatch-executor/executor.py` alive on `:4100` with real Mac HOME/PATH/USER env. Verification: `launchctl print gui/$(id -u)/ai.forge.dispatch-executor` state `running`; `curl http://127.0.0.1:4100/health` returns new executor surfaces.
+- **Codex writable GPT-5.5 fixed:** `dispatch/executor/executor.py` and live `~/.dispatch-executor/executor.py` run Codex as `codex exec --skip-git-repo-check --sandbox workspace-write -m gpt-5.5 ...` through Samuel's login shell. Verification via executor returned `CODEX_EXECUTOR_OK`, model `gpt-5.5`, sandbox `workspace-write`, exit 0.
+- **KERN executor surface added on Mac:** live executor supports `hermes-kern-gpt55` / `kern-hermes-gpt55`, running `hermes chat --profile kern --provider openai-codex --model gpt-5.5 ...` through Samuel's login shell. Verification via executor returned `HERMES_KERN_EXECUTOR_OK`, exit 0.
+- **Claude Code watcher installed:** Hermes cron job `d74be3dbb1e8` (`Watch Claude Code executor recovery`) runs `scripts/watch_claude_code_surface.py` every 15m and alerts once when the Claude Code session limit clears. Current state: `session_limited` with output `You've hit your session limit · resets 5:10pm (America/Chicago)`.
+- **LXC deploy still needed:** source router/config now knows `hermes-kern-gpt55` and `codex-cli-gpt55`, but live `dispatch-service` on `192.168.1.178` still shows the previous 10 configured surfaces until `/opt/dispatch/router/` is updated and `dispatch-service` restarted. Direct SSH to `192.168.1.178` / `192.168.1.100` failed from this session due auth (`Permission denied`), so deploy requires Samuel's SSH path or running the copy/restart from an authenticated shell.
 
 ## Remaining build phases (prioritized)
 

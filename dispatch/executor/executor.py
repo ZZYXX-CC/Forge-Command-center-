@@ -7,11 +7,13 @@ homelab router dispatch a task to Claude Code / Codex / Cursor headlessly. The
 router calls POST /run with a bearer token.
 
 Deliberately minimal and safe: prompt in, model text out. It is NOT an open
-shell, only the three mapped CLIs can be invoked, and only with a valid token.
+shell, only explicitly mapped executor surfaces can be invoked, and only with a
+valid token.
 """
 from __future__ import annotations
 import json
 import os
+import shlex
 import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -33,13 +35,29 @@ for _p in [str(HOME / ".local/bin"), str(HOME / ".npm-global/bin"),
         os.environ["PATH"] = _p + ":" + os.environ.get("PATH", "")
 
 
+def _codex_model(model: str | None) -> str:
+    """Normalize DISPATCH policy names to Codex CLI model names."""
+    if not model or model == "gpt-5.5-codex":
+        return "gpt-5.5"
+    return model
+
+
+def _login_shell(cmd: list[str]) -> list[str]:
+    """Run subscription CLIs through Samuel's login shell so OAuth/keychain env matches Terminal."""
+    return ["/bin/zsh", "-lc", " ".join(shlex.quote(part) for part in cmd)]
+
+
 def build_cmd(surface: str, prompt: str, model: str | None):
     if surface == "claude-code":
-        return ["claude", "-p", prompt, "--model", model or "sonnet", "--output-format", "text"]
-    if surface == "codex":
-        return ["codex", "exec", "--skip-git-repo-check", prompt]
+        return _login_shell(["claude", "-p", prompt, "--model", model or "sonnet", "--output-format", "text"])
+    if surface in ("codex", "codex-cli-gpt55"):
+        return _login_shell(["codex", "exec", "--skip-git-repo-check", "--sandbox", "workspace-write",
+                             "-m", _codex_model(model), prompt])
     if surface in ("cursor", "cursor-pinned"):
-        return ["cursor-agent", "--trust", "-p", prompt, "--output-format", "text"]
+        return _login_shell(["cursor-agent", "--trust", "-p", prompt, "--output-format", "text"])
+    if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55"):
+        return _login_shell(["hermes", "chat", "--profile", "kern", "--provider", "openai-codex",
+                             "--model", model or "gpt-5.5", "--toolsets", "terminal,file,web", "-q", prompt])
     return None
 
 
@@ -69,6 +87,7 @@ def run_surface(surface: str, prompt: str, model: str | None, timeout: int = 300
     t0 = time.time()
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
+                           stdin=subprocess.DEVNULL,
                            cwd=resolved_cwd)
         return {"output": (r.stdout or "").strip(), "stderr": (r.stderr or "").strip()[:500],
                 "exit_code": r.returncode, "latency_ms": int((time.time() - t0) * 1000),
@@ -88,7 +107,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._send(200, {"status": "ok", "surfaces": ["claude-code", "codex", "cursor"]})
+            self._send(200, {"status": "ok", "surfaces": [
+                "claude-code", "codex", "codex-cli-gpt55", "cursor", "hermes-kern-gpt55", "kern-hermes-gpt55"
+            ]})
         else:
             self._send(404, {"error": "not found"})
 

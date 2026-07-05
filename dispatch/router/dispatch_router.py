@@ -5,7 +5,7 @@ DISPATCH router (Phase 3 + Phase 4).
 Classify a task, select a surface from the tier chain in dispatch.config.yaml,
 route it, and log every decision. Two execution paths:
   - LiteLLM gateway (homelab)  for API/local surfaces (ollama, nim, openrouter)
-  - Mac executor (over LAN)    for CLI/subscription surfaces (claude-code, codex, cursor)
+  - Mac executor (over LAN)    for CLI/subscription surfaces (KERN/Hermes, claude-code, codex, cursor)
 
 The router NEVER reasons its way to a decision at runtime: classification is
 rules-first (with a low-confidence flag that, per DISPATCH's SOUL, means "ask
@@ -38,8 +38,11 @@ LITELLM_SURFACE_MODELS = {
     "openrouter": "openrouter-nemotron",
 }
 # CLI surfaces reachable through the Mac executor. Aliases fold onto the executor's names.
-CLI_SURFACES = {"claude-code", "codex", "cursor", "cursor-pinned", "antigravity"}
-EXEC_ALIAS = {"cursor-pinned": "cursor"}
+CLI_SURFACES = {
+    "claude-code", "codex", "codex-cli-gpt55", "cursor", "cursor-pinned", "antigravity",
+    "hermes-kern-gpt55", "kern-hermes-gpt55",
+}
+EXEC_ALIAS = {"cursor-pinned": "cursor", "codex-cli-gpt55": "codex", "kern-hermes-gpt55": "hermes-kern-gpt55"}
 
 
 # ---------------------------------------------------------------- config
@@ -156,7 +159,7 @@ def execute_litellm(proxy_model: str, text: str) -> dict:
 def execute_executor(surface: str, text: str, model: str | None,
                      cwd: str | None = None, repo: str | None = None) -> dict:
     payload_obj = {"surface": EXEC_ALIAS.get(surface, surface),
-                   "prompt": text, "model": model}
+                   "prompt": text, "model": model, "timeout": 600}
     workdir = cwd or repo
     if workdir:
         payload_obj["cwd"] = workdir

@@ -15,7 +15,9 @@ billing_order: [free_local, subscription, free_api, metered]
 # ---------------------------------------------------------------------------
 surfaces:
   claude-code:   {kind: cli, host: mac, subscription: claude,  headless: true,  status: check}
-  codex:         {kind: cli, host: mac, subscription: openai,  headless: true,  status: needs_reauth}  # openai-codex OAuth expired 2026-07-05
+  hermes-kern-gpt55: {kind: cli, host: mac, subscription: openai, headless: true, status: check}  # Hermes KERN profile using OpenAI-Codex GPT-5.5 credential pool
+  codex:         {kind: cli, host: mac, subscription: openai,  headless: true,  status: check}
+  codex-cli-gpt55: {kind: cli, host: mac, subscription: openai, headless: true, status: check}
   cursor:        {kind: cli, host: mac, subscription: cursor,  background_agent: true, status: check}
   cursor-pinned: {kind: cli, host: mac, subscription: cursor,  billing: metered, status: check}
   antigravity:   {kind: cli, host: mac, free: true,            status: check}
@@ -45,7 +47,9 @@ tiers:
   execution_routine:
     - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
     - {model: composer-2.5,      surface: cursor,        billing: subscription}
-    - {model: gpt-5.5-codex,     surface: codex,         billing: subscription}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: codex,         billing: subscription}
     - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}   # strong agentic coder
     - {model: "nvidia/nemotron-3-ultra-550b-a55b:free", surface: openrouter, billing: free_api}
