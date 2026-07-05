@@ -4,6 +4,7 @@ import { ForgeIcon } from '../components/primitives/ForgeIcon';
 import { OverviewState, Task, TasksState } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
+import { ConvexWorkItem, useWorkItems } from '../lib/useConvex';
 
 interface TasksProps {
   data: OverviewState;
@@ -72,6 +73,29 @@ const fallbackFromOverview = (data: OverviewState): TasksState => ({
   upcomingDeadlines: [],
 });
 
+const workItemToTask = (item: ConvexWorkItem): Task => {
+  const status: Task['status'] =
+    item.status === 'in_progress'
+      ? 'in_progress'
+      : item.status === 'blocked'
+        ? 'blocked'
+        : item.status === 'done' || item.status === 'cancelled'
+          ? 'done'
+          : 'todo';
+  const priority: Task['priority'] = item.priority === 'critical' ? 'urgent' : item.priority;
+
+  return {
+    id: item.workId,
+    title: item.title,
+    category: 'OWN BUILDS',
+    status,
+    priority,
+    dueAt: item.dueAt ? new Date(item.dueAt).toISOString().slice(0, 10) : undefined,
+    project: item.branch,
+    assignee: item.executor ?? item.owner,
+  };
+};
+
 const TaskCard: React.FC<{ task: Task; selected: boolean; onSelect: () => void }> = ({ task, selected, onSelect }) => (
   <button
     type="button"
@@ -112,6 +136,7 @@ const TaskCard: React.FC<{ task: Task; selected: boolean; onSelect: () => void }
 
 export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const liveWorkItems = useWorkItems(100);
   const { data: tasksState, isLoading, error } = useQuery<TasksState>({
     queryKey: ['tasks-state'],
     queryFn: fetchTasksState,
@@ -119,7 +144,8 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
     initialData: fallbackFromOverview(data),
   });
 
-  const tasks = tasksState.tasks;
+  const tasks = liveWorkItems.length > 0 ? liveWorkItems.map(workItemToTask) : tasksState.tasks;
+  const selectedWorkItem = selectedId ? liveWorkItems.find((item) => item.workId === selectedId) : liveWorkItems[0];
   const selected = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
   const counts = useMemo(() => {
     const open = tasks.filter((task) => task.status !== 'done').length;
@@ -156,12 +182,15 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
         <p className="max-w-5xl text-[12px] leading-relaxed text-text-secondary">
           This page is now the Command Center cockpit for the Convex Work Registry. The registry tracks work items,
           SAGE orchestration, owner/executor assignment, DISPATCH routing, verification state, blockers, and GitHub audit links.
-          Until Convex is authenticated in this environment, this view falls back to the local task dataset and keeps the same shape for the live registry.
+          When <span className="font-mono">VITE_CONVEX_URL</span> is configured, this page reads live Convex work items. Otherwise it falls back to the local task dataset and keeps the same shape for the live registry.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono">
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">DISPATCH deployed</span>
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">KERN GPT-5.5 live</span>
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">Codex workspace-write live</span>
+          <span className={cn('rounded-full border px-2 py-1', liveWorkItems.length > 0 ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : 'border-surface-border bg-surface-overlay text-text-muted')}>
+            {liveWorkItems.length > 0 ? 'Convex live' : 'local task fallback'}
+          </span>
           {error && <span className="rounded-full border border-status-incident/30 bg-status-incident/10 px-2 py-1 text-status-incident">task source fallback</span>}
           {isLoading && <span className="rounded-full border border-accent-primary/30 bg-accent-primary/10 px-2 py-1 text-accent-primary">loading</span>}
         </div>
@@ -235,11 +264,22 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
 
               <div className="rounded-xl border border-surface-border bg-surface-base p-4 space-y-3 text-[12px]">
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Owner</span><span className="text-text-primary">SAGE</span></div>
-                <div className="flex justify-between gap-3"><span className="text-text-muted">Executor</span><span className="text-text-primary">{selected.assignee ?? 'KERN / DISPATCH'}</span></div>
-                <div className="flex justify-between gap-3"><span className="text-text-muted">Surface</span><span className="text-text-primary">dispatch-auto</span></div>
-                <div className="flex justify-between gap-3"><span className="text-text-muted">Verification</span><span className="text-status-healthy">lint/build required</span></div>
+                <div className="flex justify-between gap-3"><span className="text-text-muted">Executor</span><span className="text-text-primary">{selectedWorkItem?.executor ?? selected.assignee ?? 'KERN / DISPATCH'}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-text-muted">Surface</span><span className="text-text-primary">{selectedWorkItem?.surface ?? 'dispatch-auto'}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-text-muted">Verification</span><span className="text-status-healthy">{selectedWorkItem?.verificationStatus?.replace('_', ' ') ?? 'lint/build required'}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Deadline</span><span className={isOverdue(selected) ? 'text-status-incident' : 'text-text-primary'}>{dueLabel(selected)}</span></div>
+                {selectedWorkItem?.pullRequestUrl && (
+                  <a href={selectedWorkItem.pullRequestUrl} className="block text-accent-primary hover:underline" target="_blank" rel="noreferrer">Open GitHub PR →</a>
+                )}
               </div>
+
+              {(selectedWorkItem?.summary || selectedWorkItem?.blocker || selectedWorkItem?.verificationSummary) && (
+                <div className="rounded-xl border border-surface-border bg-surface-base p-4 space-y-3 text-[12px]">
+                  {selectedWorkItem.summary && <p className="text-text-secondary">{selectedWorkItem.summary}</p>}
+                  {selectedWorkItem.blocker && <p className="text-status-incident">Blocker: {selectedWorkItem.blocker}</p>}
+                  {selectedWorkItem.verificationSummary && <p className="text-status-healthy">Verification: {selectedWorkItem.verificationSummary}</p>}
+                </div>
+              )}
 
               <div>
                 <div className="mb-2 text-[10px] uppercase tracking-widest text-text-muted">Execution timeline</div>

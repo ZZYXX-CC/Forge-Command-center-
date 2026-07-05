@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { ConvexProvider } from 'convex/react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
@@ -31,6 +32,7 @@ import { LayoutPage } from './pages/ui/LayoutPage';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 import { generateMockOverviewData } from './lib/mockData';
+import { convexClient } from './lib/convex';
 
 const queryClient = new QueryClient();
 
@@ -273,7 +275,7 @@ function Dashboard() {
 }
 
 export default function App() {
-  return (
+  const shell = (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
@@ -282,4 +284,6 @@ export default function App() {
       </ToastProvider>
     </QueryClientProvider>
   );
+
+  return convexClient ? <ConvexProvider client={convexClient}>{shell}</ConvexProvider> : shell;
 }
