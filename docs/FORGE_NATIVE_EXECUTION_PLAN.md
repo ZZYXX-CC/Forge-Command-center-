@@ -153,7 +153,7 @@ These are the FORGE-native roadmap. DISPATCH build phases 0–7 (in `DISPATCH_BU
 - DISPATCH router or a thin Convex action ingests `/decisions` or pushes on each route
 - Hermes agents upsert heartbeats and transition `workItems` on assign/delegate/verify/complete
 - GitHub PR/issue URLs attach to `workItems`, but GitHub is not the task database
-- Command Center new `/work` page reads Convex reactively
+- Command Center `/tasks` page reads Convex reactively as the Work Registry cockpit
 
 **Done when:** A task created in Command Center or via Telegram appears in Convex, SAGE assignment and executor progress are visible, GitHub links attach when code changes exist, and no Linear/Paperclip required.
 
@@ -164,7 +164,7 @@ These are the FORGE-native roadmap. DISPATCH build phases 0–7 (in `DISPATCH_BU
 | Surface | Path | Data source |
 |---------|------|-------------|
 | DISPATCH panel | `/dispatch` | `GET :4001/decisions`, `GET :4001/surfaces` |
-| Work cockpit | `/work` | Convex `workItems`, `workEvents`, `executorRuns`, GitHub issue/PR links |
+| Tasks / Work cockpit | `/tasks` | Convex `workItems`, `workEvents`, `executorRuns`, GitHub issue/PR links |
 | Agent map | `/bots` | Convex `agentStatus` + Hermes roster |
 | Status CLI | — | `python3 dispatch/dispatch_status.py` |
 
@@ -232,7 +232,7 @@ Build this before considering Paperclip or Linear integration. Linear can remain
 | Mac executor | `http://192.168.1.170:4100/health` | Bearer token required |
 | Mac executor run | `POST http://192.168.1.170:4100/run` | `surface`, `prompt`, `cwd` |
 | Ollama | `http://192.168.1.170:11434/api/tags` | Local models on Mac |
-| Command Center dev | `npm run dev` → `/work`, `/dispatch`, `/tasks`, `/bots` | `VITE_DISPATCH_URL`, `VITE_CONVEX_URL` |
+| Command Center dev | `npm run dev` → `/tasks`, `/dispatch`, `/bots` | `VITE_DISPATCH_URL`, `VITE_CONVEX_URL` |
 
 ## Repo map (this repository)
 
@@ -247,8 +247,7 @@ Build this before considering Paperclip or Linear integration. Linear can remain
 | `convex/schema.ts` | DB schema — extend for Work Registry |
 | `convex/agents.ts` | Agent heartbeat queries |
 | `src/pages/Dispatch.tsx` | DISPATCH cockpit (Phase C) |
-| `src/pages/Work.tsx` | Work cockpit — create in Phase C |
-| `src/pages/Tasks.tsx` | Existing task UI — can redirect/merge into `/work` |
+| `src/pages/Tasks.tsx` | Tasks / Work Registry cockpit |
 | `src/pages/BotTeam.tsx` | Neural command map / agents |
 | `src/App.tsx` | Routes and shortcuts (`g d` → dispatch) |
 | `docs/DISPATCH_HANDOFF.md` | Live ops handoff log |
@@ -266,7 +265,7 @@ Execute in order; check off in `docs/DISPATCH_HANDOFF.md` when done.
 - [ ] **Re-auth Claude Code on Mac** when session limit clears; Codex/Cursor/Hermes-GPT5.5 should cover fallback execution.
 - [ ] **Add Convex `workItems` + `workEvents` + `routingDecisions` + `executorRuns` tables** — `convex/schema.ts`, mutations in `convex/work.ts` (new).
 - [ ] **Ingest DISPATCH decisions into Convex** — cron or router hook; start with polling `/decisions` from a Convex action if push is not ready.
-- [ ] **Build `/work` cockpit** — board/list/detail timeline from Convex; show owner agent, orchestrator, status, surface/model, GitHub issue/PR, blockers, verification.
+- [ ] **Build `/tasks` cockpit** — board/list/detail timeline from Convex; show owner agent, orchestrator, status, surface/model, GitHub issue/PR, blockers, verification.
 - [ ] **Self-host Convex on homelab** — Docker on forge-node-01; set `VITE_CONVEX_URL` / `CONVEX_SELF_HOSTED_URL` (Phase B infra).
 - [ ] **Telegram intake → `workItems`** — Hermes webhook creates row, KERN delegates via skill (Phase A + B).
 - [ ] **Rotate shared Telegram bot tokens** before enabling phone intake (hazard: archived OpenClaw shares tokens with live Hermes).
@@ -277,7 +276,7 @@ Execute in order; check off in `docs/DISPATCH_HANDOFF.md` when done.
 1. Task enters via Telegram or Command Center → appears in Convex work registry.
 2. SAGE assigns owner/executor; KERN appears as technical executor, not global orchestrator.
 3. KERN can execute directly through Hermes-GPT5.5 or route to Codex/Claude/Cursor via DISPATCH.
-4. Routing decision, executor run, verification, blocker, and work state are visible in Command Center `/work` without manual log diving.
+4. Routing decision, executor run, verification, blocker, and work state are visible in Command Center `/tasks` without manual log diving.
 5. No Antfarm, Paperclip, Linear, or self-hosted Git replacement required for the loop.
 6. GitHub PR/commit/issue links are the code audit artifacts; Convex is the private operations audit.
 

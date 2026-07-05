@@ -113,4 +113,94 @@ export default defineSchema({
     source: v.string(),
     updatedAt: v.number(),
   }).index("by_label", ["label"]),
+
+  workItems: defineTable({
+    workId: v.string(),
+    title: v.string(),
+    summary: v.optional(v.string()),
+    status: v.union(
+      v.literal("backlog"),
+      v.literal("ready"),
+      v.literal("assigned"),
+      v.literal("in_progress"),
+      v.literal("blocked"),
+      v.literal("review"),
+      v.literal("done"),
+      v.literal("cancelled"),
+    ),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical")),
+    orchestrator: v.string(),
+    owner: v.optional(v.string()),
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+    model: v.optional(v.string()),
+    branch: v.optional(v.string()),
+    pullRequestUrl: v.optional(v.string()),
+    issueUrl: v.optional(v.string()),
+    blocker: v.optional(v.string()),
+    verificationStatus: v.union(
+      v.literal("not_started"),
+      v.literal("running"),
+      v.literal("passed"),
+      v.literal("failed"),
+      v.literal("waived"),
+    ),
+    verificationSummary: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    dueAt: v.optional(v.number()),
+  })
+    .index("by_workId", ["workId"])
+    .index("by_status", ["status"])
+    .index("by_owner_status", ["owner", "status"])
+    .index("by_updatedAt", ["updatedAt"]),
+
+  workEvents: defineTable({
+    workId: v.string(),
+    type: v.string(),
+    actor: v.string(),
+    message: v.string(),
+    metadata: v.optional(v.string()),
+    occurredAt: v.number(),
+  })
+    .index("by_workId_occurredAt", ["workId", "occurredAt"])
+    .index("by_occurredAt", ["occurredAt"]),
+
+  routingDecisions: defineTable({
+    workId: v.optional(v.string()),
+    task: v.string(),
+    category: v.string(),
+    complexity: v.string(),
+    chosenSurface: v.optional(v.string()),
+    chosenModel: v.optional(v.string()),
+    via: v.optional(v.string()),
+    status: v.string(),
+    latencyMs: v.optional(v.number()),
+    consideredJson: v.optional(v.string()),
+    decidedAt: v.number(),
+  })
+    .index("by_workId_decidedAt", ["workId", "decidedAt"])
+    .index("by_decidedAt", ["decidedAt"])
+    .index("by_chosenSurface", ["chosenSurface"]),
+
+  executorRuns: defineTable({
+    workId: v.optional(v.string()),
+    runId: v.string(),
+    executor: v.string(),
+    surface: v.string(),
+    model: v.optional(v.string()),
+    status: v.string(),
+    promptPreview: v.optional(v.string()),
+    outputPreview: v.optional(v.string()),
+    error: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    latencyMs: v.optional(v.number()),
+    cwd: v.optional(v.string()),
+    commitSha: v.optional(v.string()),
+    pullRequestUrl: v.optional(v.string()),
+  })
+    .index("by_runId", ["runId"])
+    .index("by_workId_startedAt", ["workId", "startedAt"])
+    .index("by_surface_startedAt", ["surface", "startedAt"]),
 });
