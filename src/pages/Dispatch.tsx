@@ -2,46 +2,14 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ForgeIcon } from '@/src/components/primitives/ForgeIcon';
 import { cn } from '@/src/lib/utils';
-
-// DISPATCH router service (LXC 101 on the homelab). Override with VITE_DISPATCH_URL.
-const DISPATCH_URL =
-  (import.meta as any).env?.VITE_DISPATCH_URL || 'http://192.168.1.178:4001';
-
-interface Considered {
-  model: string | null;
-  surface: string;
-  billing?: string;
-  via: string | null;
-  routable: boolean;
-  available: boolean | null;
-  gated_out: boolean;
-}
-
-interface Decision {
-  ts: string;
-  task?: string;
-  category: string;
-  complexity: string;
-  urgency: string;
-  confidence: string;
-  chosen_surface: string | null;
-  chosen_model: string | null;
-  via: string | null;
-  served_by: string | null;
-  latency_ms: number | null;
-  status: string;
-  considered?: string; // JSON string of Considered[]
-}
-
-interface SurfaceStatus {
-  surface: string;
-  kind?: string;
-  host?: string;
-  billing?: string | null;
-  via: string | null;
-  available: boolean;
-  detail?: string | null;
-}
+import {
+  DISPATCH_URL,
+  ConsideredSurface,
+  DispatchDecision,
+  DispatchSurfaceStatus,
+  fetchDispatchDecisions,
+  fetchDispatchSurfaces,
+} from '@/src/lib/dispatchClient';
 
 const statusTone = (s: string) =>
   s === 'executed'
@@ -60,7 +28,7 @@ const viaTone = (v: string | null) =>
       : 'bg-surface-overlay text-text-muted';
 
 // Human-readable meaning of the availability state of a considered surface.
-const availState = (c: Considered): { label: string; tone: string } => {
+const availState = (c: ConsideredSurface): { label: string; tone: string } => {
   if (c.gated_out) return { label: 'skipped: hard-only', tone: 'text-text-muted' };
   if (c.available === true) return { label: 'available', tone: 'text-status-healthy' };
   if (c.available === false) return { label: c.routable ? 'down' : 'not wired', tone: 'text-status-incident' };
@@ -69,22 +37,14 @@ const availState = (c: Considered): { label: string; tone: string } => {
 
 export const Dispatch: React.FC = () => {
   const [open, setOpen] = useState<number | null>(null);
-  const { data, isLoading, error } = useQuery<{ decisions: Decision[] }>({
+  const { data, isLoading, error } = useQuery<{ decisions: DispatchDecision[] }>({
     queryKey: ['dispatch-decisions'],
-    queryFn: async () => {
-      const r = await fetch(`${DISPATCH_URL}/decisions`);
-      if (!r.ok) throw new Error(`dispatch ${r.status}`);
-      return r.json();
-    },
+    queryFn: fetchDispatchDecisions,
     refetchInterval: 10_000,
   });
-  const { data: surfacesData } = useQuery<{ surfaces: SurfaceStatus[] }>({
+  const { data: surfacesData } = useQuery<{ surfaces: DispatchSurfaceStatus[] }>({
     queryKey: ['dispatch-surfaces'],
-    queryFn: async () => {
-      const r = await fetch(`${DISPATCH_URL}/surfaces`);
-      if (!r.ok) throw new Error(`dispatch surfaces ${r.status}`);
-      return r.json();
-    },
+    queryFn: fetchDispatchSurfaces,
     refetchInterval: 10_000,
   });
 
@@ -190,7 +150,7 @@ export const Dispatch: React.FC = () => {
             </thead>
             <tbody className="font-mono">
               {decisions.map((d, i) => {
-                let chain: Considered[] = [];
+                let chain: ConsideredSurface[] = [];
                 try { chain = d.considered ? JSON.parse(d.considered) : []; } catch { /* ignore */ }
                 const isOpen = open === i;
                 return (

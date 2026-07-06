@@ -5,6 +5,7 @@ import { OverviewState, Task, TasksState } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
 import { ConvexWorkItem, useWorkItems } from '../lib/useConvex';
+import { DISPATCH_URL, fetchDispatchHealth, fetchDispatchSurfaces } from '../lib/dispatchClient';
 
 interface TasksProps {
   data: OverviewState;
@@ -143,10 +144,25 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
     refetchInterval: 30_000,
     initialData: fallbackFromOverview(data),
   });
+  const { data: dispatchHealth, error: dispatchHealthError } = useQuery({
+    queryKey: ['tasks-dispatch-health'],
+    queryFn: fetchDispatchHealth,
+    refetchInterval: 10_000,
+    retry: false,
+  });
+  const { data: dispatchSurfacesData } = useQuery({
+    queryKey: ['tasks-dispatch-surfaces'],
+    queryFn: fetchDispatchSurfaces,
+    refetchInterval: 10_000,
+    retry: false,
+  });
 
   const tasks = liveWorkItems.length > 0 ? liveWorkItems.map(workItemToTask) : tasksState.tasks;
   const selectedWorkItem = selectedId ? liveWorkItems.find((item) => item.workId === selectedId) : liveWorkItems[0];
   const selected = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
+  const dispatchSurfaces = dispatchSurfacesData?.surfaces ?? [];
+  const availableSurfaces = dispatchSurfaces.filter((surface) => surface.available).length;
+  const dispatchOnline = dispatchHealth?.status === 'ok';
   const counts = useMemo(() => {
     const open = tasks.filter((task) => task.status !== 'done').length;
     const running = tasks.filter((task) => task.status === 'in_progress').length;
@@ -185,7 +201,9 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
           When <span className="font-mono">VITE_CONVEX_URL</span> is configured, this page reads live Convex work items. Otherwise it falls back to the local task dataset and keeps the same shape for the live registry.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono">
-          <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">DISPATCH deployed</span>
+          <span className={cn('rounded-full border px-2 py-1', dispatchOnline ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : 'border-status-incident/30 bg-status-incident/10 text-status-incident')}>
+            DISPATCH {dispatchOnline ? 'online' : 'unreachable'}
+          </span>
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">KERN GPT-5.5 live</span>
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">Codex workspace-write live</span>
           <span className={cn('rounded-full border px-2 py-1', liveWorkItems.length > 0 ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : 'border-surface-border bg-surface-overlay text-text-muted')}>
@@ -193,6 +211,40 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
           </span>
           {error && <span className="rounded-full border border-status-incident/30 bg-status-incident/10 px-2 py-1 text-status-incident">task source fallback</span>}
           {isLoading && <span className="rounded-full border border-accent-primary/30 bg-accent-primary/10 px-2 py-1 text-accent-primary">loading</span>}
+        </div>
+        <div className="mt-4 rounded-xl border border-surface-border bg-surface-base p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-text-muted">Executor surface status</div>
+              <div className="mt-1 text-[12px] text-text-secondary">
+                {dispatchOnline
+                  ? `${availableSurfaces}/${dispatchSurfaces.length} DISPATCH surfaces available from ${DISPATCH_URL}`
+                  : `Cannot reach DISPATCH at ${DISPATCH_URL}`}
+              </div>
+            </div>
+            {dispatchHealthError && <span className="text-[11px] text-status-incident">health check failed</span>}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {dispatchSurfaces.map((surface) => (
+              <span
+                key={surface.surface}
+                title={`${surface.kind ?? 'surface'}${surface.billing ? ` · ${surface.billing}` : ''}${surface.detail ? ` · ${surface.detail}` : ''}`}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-mono',
+                  surface.available
+                    ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy'
+                    : 'border-status-incident/30 bg-status-incident/10 text-status-incident'
+                )}
+              >
+                <span className={cn('h-1.5 w-1.5 rounded-full', surface.available ? 'bg-status-healthy' : 'bg-status-incident')} />
+                {surface.surface}
+                {surface.via && <span className="text-text-muted">/{surface.via}</span>}
+              </span>
+            ))}
+            {dispatchSurfaces.length === 0 && (
+              <span className="text-[11px] text-text-muted">Surface list unavailable; /dispatch still shows routing history when reachable.</span>
+            )}
+          </div>
         </div>
       </div>
 
