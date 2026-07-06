@@ -3,9 +3,11 @@
 # This is DATA, not code. Editing a ranking here never requires a deploy.
 # Model names are accurate as of 2026-07 and will drift; only this file changes when they do.
 
-# Cheapest-first preference for a given capability. The router walks a tier's
+# Capability-first preference for FORGE build work. The router walks a tier's
 # chain in order, skipping any surface that is down / cooldown / unauth / over quota / over cap.
-billing_order: [free_local, subscription, free_api, metered]
+# Local models remain useful for cheap/simple tasks, but repo coding should prefer
+# subscription executor surfaces before Ollama.
+billing_order: [subscription, free_local, free_api, metered]
 
 # ---------------------------------------------------------------------------
 # SURFACES: a "surface" is HOW a model is reached (this is separate from the model).
@@ -44,13 +46,16 @@ tiers:
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api}   # free open last-resort planner if all Claude/GPT surfaces are down
 
   # Tier 2: execution (writing, refactoring, shipping code).
+  # FORGE repo/build work is capability-first: prefer subscription executor
+  # surfaces with real repo cwd/tooling before cheap local models. Ollama remains
+  # fallback for small/simple work or when executor surfaces are unavailable.
   execution_routine:
-    - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
-    - {model: composer-2.5,      surface: cursor,        billing: subscription}
     - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
     - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
     - {model: gpt-5.5,           surface: codex,         billing: subscription}
     - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}   # strong agentic coder
     - {model: "nvidia/nemotron-3-ultra-550b-a55b:free", surface: openrouter, billing: free_api}
     - {model: "moonshotai/kimi-k2.6",        surface: nim, billing: free_api, rpm: 40}   # agentic + long context
