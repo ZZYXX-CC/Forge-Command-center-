@@ -110,16 +110,33 @@ def route_chat(messages: list, cwd: str | None = None, repo: str | None = None):
     result, status = None, "no_available_surface"
     if cls["confidence"] == "low":
         status = "low_confidence_defer_sage"
-    ch = sel["chosen"]
-    if ch:
+
+    errors = []
+    # Try the selected surface first, then walk the remaining available,
+    # routable, non-gated candidates. One dead executor/backend must not
+    # collapse the whole DISPATCH route.
+    candidates = []
+    if sel.get("chosen"):
+        candidates.append(sel["chosen"])
+    for candidate in sel.get("considered", []):
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    for ch in candidates:
+        if not ch or not ch.get("routable") or not ch.get("available") or ch.get("gated_out"):
+            continue
         try:
             if ch["via"] == "litellm":
                 result = execute_litellm_chat(ch["proxy"], messages)
             else:
                 result = execute_executor(ch["surface"], _flatten(messages), ch["model"], cwd=cwd, repo=repo)
-            status = "executed"
+            status = "executed" if not errors else "executed_after_fallback:" + ";".join(errors[:3])
+            sel["chosen"] = ch
+            break
         except Exception as e:
-            status = f"exec_error:{type(e).__name__}"
+            errors.append(f"{ch.get('surface')}:{type(e).__name__}")
+            status = "exec_error_chain:" + ";".join(errors[:5])
+
     con = R._db()
     R.log_decision(con, task, cls, sel, result, status)
     return cls, sel, result, status

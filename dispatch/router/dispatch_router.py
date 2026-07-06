@@ -230,19 +230,33 @@ def route(text: str, has_image: bool = False, dry_run: bool = False,
     result, status = None, "no_available_surface"
     if cls["confidence"] == "low":
         status = "low_confidence_defer_sage"
-    ch = sel["chosen"]
-    if ch:
+
+    errors = []
+    candidates = []
+    if sel.get("chosen"):
+        candidates.append(sel["chosen"])
+    for candidate in sel.get("considered", []):
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    for ch in candidates:
+        if not ch or not ch.get("routable") or not ch.get("available") or ch.get("gated_out"):
+            continue
         if dry_run:
             status = "would_execute(dry_run)"
-        else:
-            try:
-                if ch["via"] == "litellm":
-                    result = execute_litellm(ch["proxy"], text)
-                else:
-                    result = execute_executor(ch["surface"], text, ch["model"], cwd=cwd, repo=repo)
-                status = "executed"
-            except Exception as e:
-                status = f"exec_error:{type(e).__name__}"
+            sel["chosen"] = ch
+            break
+        try:
+            if ch["via"] == "litellm":
+                result = execute_litellm(ch["proxy"], text)
+            else:
+                result = execute_executor(ch["surface"], text, ch["model"], cwd=cwd, repo=repo)
+            status = "executed" if not errors else "executed_after_fallback:" + ";".join(errors[:3])
+            sel["chosen"] = ch
+            break
+        except Exception as e:
+            errors.append(f"{ch.get('surface')}:{type(e).__name__}")
+            status = "exec_error_chain:" + ";".join(errors[:5])
     con = _db()
     log_decision(con, text, cls, sel, result, status)
     return {"classification": cls, "selection": sel, "result": result, "status": status}
