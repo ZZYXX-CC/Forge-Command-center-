@@ -27,7 +27,7 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
     - Admin key lives only in LXC `/opt/forge-convex/admin.key` (600). Do not commit or paste it.
   - **LXC 103 `adguard`** — DHCP + DNS for the LAN. Static leases live here (`/opt/AdGuardHome/data/leases.json`). Config backups `.bak-*` alongside.
   - ZFS pool `tank` (~900GB, mirror) with `/tank/nas` (media offloaded from the SSD lives here), plus the `dev-archive`, and the SSD reformat backups.
-  - **Command Center ingress (2026-07-06):** `https://apps.nuvuestudio.net` now routes through VM 100 `nuvue-apps` Nginx Proxy Manager custom config (`/data/nginx/custom/http.conf`) to LXC 104 `forge-command-center` at `192.168.1.180:80`. Public health `https://apps.nuvuestudio.net/healthz` returns `ok`. Preferred future host `command-center.apps.nuvuestudio.net` is still NXDOMAIN until Cloudflare DNS/Zero Trust public hostname is added. Do not use TRACE for this route.
+  - **Command Center ingress (2026-07-06):** `https://apps.nuvuestudio.net` now routes through VM 100 `nuvue-apps` Nginx Proxy Manager custom config (`/data/nginx/custom/http.conf`) to LXC 104 `forge-command-center` at `192.168.1.181:80`. Public health `https://apps.nuvuestudio.net/healthz` returns `ok`. Preferred future host `command-center.apps.nuvuestudio.net` is still NXDOMAIN until Cloudflare DNS/Zero Trust public hostname is added. Do not use TRACE for this route. Note: LXC 104 moved from `.180` to `.181` because `.180` was taken by another LAN client (`fe:f1:9c:06:4a:7a`).
 
 ## Endpoints (health-check these first)
 

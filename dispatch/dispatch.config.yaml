@@ -51,16 +51,20 @@ tiers:
     - {model: gpt-5.5,         surface: openai-api,    billing: metered}   # fallback
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api}   # free open last-resort planner if all Claude/GPT surfaces are down
 
-  # Tier 2: execution (writing, refactoring, shipping code).
-  # FORGE repo/build work is capability-first: prefer subscription executor
-  # surfaces with real repo cwd/tooling before cheap local models. Ollama remains
-  # fallback for simple/low-risk work or when subscription quota is tight/unavailable.
+  # Research / work discovery. Premium surfaces synthesize; Hermes stores the result.
+  research:
+    - {model: claude-sonnet-5, surface: claude-code,   billing: subscription}
+    - {model: gpt-5.5,         surface: hermes-kern-gpt55, billing: subscription}
+    - {model: gpt-5.5,         surface: codex,         billing: subscription, role: second_opinion}
+    - {model: gemini-2.5-pro,  surface: gemini-cli,    billing: subscription, role: broad_research}
+    - {model: "moonshotai/kimi-k2.6", surface: nim, billing: free_api, rpm: 40}
+    - {model: "nvidia/nemotron-3-ultra-550b-a55b:free", surface: openrouter, billing: free_api}
+
+  # Tier 2a: routine execution. Keep KERN/Codex from becoming default labor.
+  # Cursor/local/free API absorb routine implementation; premium reasoning surfaces
+  # are late recovery/verification fallbacks when cheaper workers fail.
   execution_routine:
-    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
-    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
     - {model: composer-2.5,      surface: cursor,        billing: subscription}
-    - {model: gpt-5.5,           surface: codex,         billing: subscription}
-    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
     - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}   # strong agentic coder
     - {model: "nvidia/nemotron-3-ultra-550b-a55b:free", surface: openrouter, billing: free_api}
@@ -69,7 +73,31 @@ tiers:
     - {model: "z-ai/glm-5.2",                surface: nim, billing: free_api, rpm: 40}   # alternate
     - {model: "qwen/qwen3.5-397b-a17b",      surface: nim, billing: free_api, rpm: 40}   # alternate
     - {model: antigravity,       surface: antigravity,   billing: free}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription, role: recovery}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription, role: recovery}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription, role: recovery_or_verification}
     - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}   # hard exec, deliberate
+
+  # Tier 2b: refactoring / structural repo work. Premium tools are allowed here,
+  # but they should produce targeted changes plus verification, not endless labor.
+  execution_refactor:
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}
+    - {model: "qwen/qwen3-coder:free", surface: openrouter, billing: free_api}
+    - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}
+
+  # Tier 2c: infrastructure / production-touching. Per hard rule, skip free-tier
+  # attempts; use subscription tools with better judgment and auditability first.
+  execution_infrastructure:
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40, role: recovery_if_subscriptions_down}
+    - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}
 
   # Vision / multimodal (screenshots, UI mockups, design review).
   vision:

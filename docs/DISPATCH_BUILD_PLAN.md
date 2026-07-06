@@ -80,14 +80,27 @@ tiers:
     - {model: claude-sonnet-5, surface: anthropic-api, billing: metered}      # fallback if subscription capped
     - {model: gpt-5.5,         surface: openai-api,    billing: metered}      # fallback
 
-  execution_routine:               # Tier 2
-    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
-    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+  execution_routine:               # Tier 2a: routine implementation; avoid burning KERN/Codex by default
     - {model: composer-2.5,      surface: cursor,        billing: subscription}
-    - {model: gpt-5.5,           surface: codex,         billing: subscription}
-    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
     - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
     - {model: qwen3-coder-480b,  surface: nim,           billing: free_api, rpm: 40}
+    - {model: nemotron-3-ultra,  surface: openrouter,    billing: free_api}
+    - {model: antigravity,       surface: antigravity,   billing: free}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription, role: recovery}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription, role: recovery}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription, role: recovery_or_verification}
+
+  execution_refactor:              # Tier 2b: refactor/structural work; premium tools allowed
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
+
+  execution_infrastructure:        # Tier 2c: infra/production; skip free-tier attempt
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription}
     - {model: nemotron-3-ultra,  surface: openrouter,    billing: free_api}
     - {model: antigravity,       surface: antigravity,   billing: free}
     - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}    # hard exec, deliberate

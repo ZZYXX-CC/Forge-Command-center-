@@ -54,6 +54,13 @@ def load_config(path: str = CONFIG_PATH) -> dict:
 # ---------------------------------------------------------------- classify
 _PLAN = re.compile(r"\b(plan|architect(ure)?|design|decide|decision|trade[- ]?off|"
                    r"strategy|approach|should we|evaluate|threat model|security)\b", re.I)
+_RESEARCH = re.compile(r"\b(research|investigate|compare|survey|explore|look up|find out|"
+                       r"analy[sz]e|review options|due diligence)\b", re.I)
+_REFACTOR = re.compile(r"\b(refactor|redesign|restructure|simplify|cleanup|clean up|"
+                       r"technical debt|architecture change|large change)\b", re.I)
+_INFRA = re.compile(r"\b(infra(structure)?|deploy|deployment|production|prod|server|lxc|vm|"
+                    r"proxmox|cloudflare|dns|tunnel|caddy|nginx|docker|convex|database|db|"
+                    r"migration|firewall|systemd|service|ingress|routing)\b", re.I)
 _EXEC = re.compile(r"\b(write|implement|fix|refactor|add|build|code|function|bug|"
                    r"patch|script|endpoint|test|deploy|migrat)\w*\b", re.I)
 _HARD = re.compile(r"\b(hard|complex|novel|architecture|security|distributed|"
@@ -68,8 +75,15 @@ def classify(text: str, has_image: bool = False) -> dict:
         return {"category": "vision", "complexity": "routine", "urgency": "queue",
                 "confidence": "high", "why": "image present"}
     plan, ex = bool(_PLAN.search(t)), bool(_EXEC.search(t))
+    research, refactor, infra = bool(_RESEARCH.search(t)), bool(_REFACTOR.search(t)), bool(_INFRA.search(t))
     if plan and not ex:
         category, confidence = "planning", "high"
+    elif research and not ex:
+        category, confidence = "research", "high"
+    elif infra and ex:
+        category, confidence = "execution_infrastructure", "high"
+    elif refactor and ex:
+        category, confidence = "execution_refactor", "high"
     elif ex and not plan:
         category, confidence = "execution_routine", "high"
     elif ex and plan:
@@ -79,7 +93,8 @@ def classify(text: str, has_image: bool = False) -> dict:
     complexity = "hard" if (_HARD.search(t) or len(t) > 600) else "routine"
     urgency = "now" if _URGENT.search(t) else "queue"
     return {"category": category, "complexity": complexity, "urgency": urgency,
-            "confidence": confidence, "why": f"plan_kw={plan} exec_kw={ex}"}
+            "confidence": confidence,
+            "why": f"plan_kw={plan} research_kw={research} refactor_kw={refactor} infra_kw={infra} exec_kw={ex}"}
 
 
 # ---------------------------------------------------------------- availability

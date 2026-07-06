@@ -91,14 +91,34 @@ Never execution.
 
 Subscription-first according to `billing_order`.
 
-1. Hermes on GPT-5.5 / KERN profile — infrastructure, KERN-owned automation, refactors.
-2. Codex CLI on GPT-5.5 — repo edits and code execution with writable workspace.
-3. Cursor — Composer 2.5 default; pinned frontier model for hard cases. If Claude Code is unavailable, check whether Claude is reachable through Cursor.
-4. Claude Code on Sonnet 5.
-5. Local Ollama — `qwen2.5-coder:14b`; `gemma4:12b` for vision. Simple/low-risk work or when subscription quota is tight.
-6. NVIDIA NIM / OpenRouter — free fallbacks such as Qwen3 Coder 480B and Nemotron 3 Ultra.
-7. Antigravity — overflow/future layer.
-8. Metered direct billing — true last resort.
+KERN and Codex are high-leverage brains, not default labor. They should mostly plan, research, refactor, verify, recover, and handle infrastructure — not burn premium quota on routine grind work.
+
+### Routine execution
+
+1. Cursor — Composer 2.5 default; pinned frontier model only for hard cases. If Claude Code is unavailable, check whether Claude is reachable through Cursor.
+2. Local Ollama — `qwen2.5-coder:14b`; `gemma4:12b` for vision. Simple/low-risk work or when subscription quota is tight.
+3. NVIDIA NIM / OpenRouter — free fallbacks such as Qwen3 Coder 480B and Nemotron 3 Ultra.
+4. Antigravity — overflow/future layer.
+5. Claude Code / Codex / KERN — recovery or verification only if the cheaper worker chain fails.
+6. Metered direct billing — true last resort.
+
+### Refactor / structural work
+
+1. Claude Code on Sonnet 5.
+2. Codex CLI on GPT-5.5.
+3. Hermes on GPT-5.5 / KERN profile.
+4. Cursor.
+5. Free API fallbacks.
+6. Metered direct billing.
+
+### Infrastructure / production-touching work
+
+1. Hermes on GPT-5.5 / KERN profile.
+2. Codex CLI on GPT-5.5.
+3. Claude Code on Sonnet 5.
+4. Cursor.
+5. Free API only as recovery if subscription surfaces are unavailable.
+6. Metered direct billing.
 
 ## Failover requirement
 
