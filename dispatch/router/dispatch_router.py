@@ -40,7 +40,7 @@ LITELLM_SURFACE_MODELS = {
 # CLI surfaces reachable through the Mac executor. Aliases only fold legacy names.
 CLI_SURFACES = {
     "claude-code", "codex", "codex-cli-gpt55", "cursor", "cursor-pinned", "antigravity",
-    "hermes-kern-gpt55", "kern-hermes-gpt55",
+    "hermes-kern-gpt55", "kern-hermes-gpt55", "gemini-cli",
 }
 EXEC_ALIAS = {"cursor-pinned": "cursor", "kern-hermes-gpt55": "hermes-kern-gpt55"}
 

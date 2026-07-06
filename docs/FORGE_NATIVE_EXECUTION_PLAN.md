@@ -8,13 +8,31 @@ Pairs with:
 
 - `docs/DISPATCH_HANDOFF.md` — live infrastructure, endpoints, and build state
 - `docs/DISPATCH_BUILD_PLAN.md` — DISPATCH routing phases (0–7); routing is largely done
+- `docs/FORGE_OPERATING_MODEL.md` — four-layer mental model, billing philosophy, memory scopes
 - `dispatch/dispatch.config.yaml` — tier/surface policy (edit data, not code)
 
 ## One-line architecture
 
 **Telegram + Command Center → SAGE orchestration → Convex Work Registry → executor agents/surfaces (KERN, Codex, Claude Code, Cursor, Hermes-GPT5.5, Ollama/NIM/OpenRouter) → GitHub audit + Convex execution ledger → Command Center visibility.**
 
-Hermes owns intake, scheduling, skills, and agent identity. SAGE owns priority/orchestration. KERN is a technical executor, not the global orchestrator. DISPATCH owns deterministic tier selection and executor failover. Convex owns private durable work state and reactive UI. GitHub remains the code/PR audit layer.
+Hermes owns intake, scheduling, skills, and agent identity. SAGE owns priority/orchestration. KERN is a technical executor, not the global orchestrator. Claude-family models own planning/security/design intelligence. DISPATCH owns deterministic tier selection and executor failover. Convex owns private durable work state and reactive UI. GitHub remains the code/PR audit layer.
+
+## Four-layer operating model
+
+The active mental model lives in `docs/FORGE_OPERATING_MODEL.md`:
+
+1. **Intelligence** — Claude models plan and make architecture/security/design decisions. Codex/GPT-5.5 is a peer for security-tagged work; Gemini CLI is design/UI planning and transitional toward Antigravity.
+2. **Execution / Routing** — DISPATCH classifies, checks live availability, walks the ranked chain, and logs fallback decisions.
+3. **Research / Work** — Hermes Agent is the round-the-clock worker: cron scheduling, webhooks/intake, tools, sessions, and compounding skills.
+4. **Self / Memory** — keep codebase memory MCP untouched for project/code context; add a separate Obsidian-compatible markdown vault for business/personal/strategic context.
+
+Billing tiebreaker:
+
+```yaml
+billing_order: [subscription, free_local, free_api, metered]
+```
+
+Hard rule: refactoring, infrastructure, and production-touching work skips the free-tier attempt and goes straight to a subscription tool.
 
 ```mermaid
 flowchart LR

@@ -33,6 +33,7 @@ SUPPORTED_SURFACES = [
     "codex",
     "codex-cli-gpt55",
     "cursor",
+    "gemini-cli",
     "hermes-kern-gpt55",
     "kern-hermes-gpt55",
 ]
@@ -64,6 +65,9 @@ def build_cmd(surface: str, prompt: str, model: str | None):
                              "-m", _codex_model(model), prompt])
     if surface in ("cursor", "cursor-pinned"):
         return _login_shell(["cursor-agent", "--trust", "-p", prompt, "--output-format", "text"])
+    if surface == "gemini-cli":
+        return _login_shell(["gemini", "--prompt", prompt, "--approval-mode", "plan",
+                             "--output-format", "text", "--model", model or "gemini-2.5-pro"])
     if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55"):
         return _login_shell(["hermes", "chat", "--profile", "kern", "--provider", "openai-codex",
                              "--model", model or "gpt-5.5", "--toolsets", "terminal,file,web", "-q", prompt])

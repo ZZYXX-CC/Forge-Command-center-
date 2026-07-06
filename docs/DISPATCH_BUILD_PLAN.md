@@ -27,14 +27,16 @@ DISPATCH is the thin policy layer that ties these together.
 
 A model and the surface you reach it through are two different things with different billing. The same model can cost nothing at the margin or real per-token money depending on how it is invoked.
 
-Four billing classes, cheapest first:
+Four billing classes, capability/cost tiebreaker order:
 
-1. `free_local`: Ollama on the Mac mini. No cost.
-2. `subscription`: Claude Code, Codex, Cursor. Flat cost, capped by plan usage limits. No marginal cost per call until the cap.
+1. `subscription`: Claude Code, Codex, Cursor, Hermes GPT-5.5 surfaces. Flat cost, capped by plan usage limits. No marginal cost per call until the cap.
+2. `free_local`: Ollama on the Mac mini. No cost; best for simple/low-risk work or when subscription quota is tight.
 3. `free_api`: NVIDIA NIM and OpenRouter free tiers. No cost, but rate-limited and less reliable.
-4. `metered`: Anthropic API, OpenAI API, Cursor pinned frontier. Real per-token cost. Last resort.
+4. `metered`: Anthropic API, OpenAI API, direct pay-as-you-go. Real per-token cost. Last resort.
 
-Rule: prefer the subscription surface for Claude and GPT work, and spill to the metered API only when the subscription hits its usage cap or the CLI is unavailable. Track "subscription cap remaining" as a form of quota, exactly like an API rate limit. Frequent spill to metered API is the logged signal that a subscription needs upgrading.
+Rule: prefer the subscription surface when multiple tools fit the task equally well, and spill to metered APIs only when subscription surfaces are unavailable/capped and free fallbacks are unsuitable. Track "subscription cap remaining" as a form of quota, exactly like an API rate limit. Frequent spill away from subscription surfaces is the logged signal that a subscription needs upgrading or a surface needs repair.
+
+Hard rule: **refactoring, infrastructure, and production-touching work skips the free-tier attempt entirely and goes straight to a subscription tool.**
 
 ## Topology
 
@@ -66,7 +68,7 @@ Internal disk is nearly full (13GB free), the external SSD has 510GB free, the h
 `dispatch.config.yaml` is the single source of truth. No model names in code. Editing a ranking is a file edit, never a deploy.
 
 ```yaml
-billing_order: [free_local, subscription, free_api, metered]   # preference for a given capability
+billing_order: [subscription, free_local, free_api, metered]   # preference for a given capability
 
 tiers:
   planning:                        # Tier 1, never executes code
@@ -74,14 +76,17 @@ tiers:
     - {model: claude-opus-4-8, surface: claude-code,   billing: subscription, when: hard}
     - {model: claude-fable-5,  surface: claude-code,   billing: subscription, when: highest_stakes}
     - {model: gpt-5.5,         surface: codex,         billing: subscription, role: second_opinion}
+    - {model: gemini-2.5-pro,  surface: gemini-cli,    billing: subscription, role: ui_design_planning}
     - {model: claude-sonnet-5, surface: anthropic-api, billing: metered}      # fallback if subscription capped
     - {model: gpt-5.5,         surface: openai-api,    billing: metered}      # fallback
 
   execution_routine:               # Tier 2
-    - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
     - {model: composer-2.5,      surface: cursor,        billing: subscription}
-    - {model: gpt-5.5-codex,     surface: codex,         billing: subscription}
+    - {model: gpt-5.5,           surface: codex,         billing: subscription}
     - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
+    - {model: qwen2.5-coder:14b, surface: ollama,        billing: free_local}
     - {model: qwen3-coder-480b,  surface: nim,           billing: free_api, rpm: 40}
     - {model: nemotron-3-ultra,  surface: openrouter,    billing: free_api}
     - {model: antigravity,       surface: antigravity,   billing: free}
@@ -95,6 +100,7 @@ surfaces:
   codex:         {kind: cli, host: mac, subscription: openai, headless: true}
   cursor:        {kind: cli, host: mac, subscription: cursor, background_agent: true}
   cursor-pinned: {kind: cli, host: mac, subscription: cursor, billing: metered}
+  gemini-cli:    {kind: cli, host: mac, subscription: google, headless: true}
   antigravity:   {kind: cli, host: mac, free: true}
   anthropic-api: {kind: api}
   openai-api:    {kind: api}

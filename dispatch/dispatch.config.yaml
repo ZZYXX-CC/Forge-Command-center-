@@ -3,10 +3,11 @@
 # This is DATA, not code. Editing a ranking here never requires a deploy.
 # Model names are accurate as of 2026-07 and will drift; only this file changes when they do.
 
-# Capability-first preference for FORGE build work. The router walks a tier's
-# chain in order, skipping any surface that is down / cooldown / unauth / over quota / over cap.
-# Local models remain useful for cheap/simple tasks, but repo coding should prefer
-# subscription executor surfaces before Ollama.
+# Billing philosophy / tiebreaker. Subscription tools cost nothing extra at the
+# margin, so when multiple tools fit equally well they win. Free local/API are
+# useful fallbacks and simple-task surfaces. Metered pay-as-you-go is true last resort.
+# Hard rule: refactoring, infrastructure, and production-touching work skips the
+# free-tier attempt and goes straight to subscription executor surfaces.
 billing_order: [subscription, free_local, free_api, metered]
 
 # ---------------------------------------------------------------------------
@@ -22,6 +23,7 @@ surfaces:
   codex-cli-gpt55: {kind: cli, host: mac, subscription: openai, headless: true, status: check}
   cursor:        {kind: cli, host: mac, subscription: cursor,  background_agent: true, status: check}
   cursor-pinned: {kind: cli, host: mac, subscription: cursor,  billing: metered, status: check}
+  gemini-cli:    {kind: cli, host: mac, subscription: google,  headless: true, status: check} # UI/design planning; transitional toward Antigravity
   antigravity:   {kind: cli, host: mac, free: true,            status: check}
   anthropic-api: {kind: api, credential: env,                  status: to_configure}
   openai-api:    {kind: api, credential: env,                  status: to_configure}
@@ -36,11 +38,15 @@ surfaces:
 tiers:
 
   # Tier 1: planning / architecture / security-critical design. NEVER writes code.
+  # Claude is primary intelligence. Codex/GPT-5.5 is a real peer for security-tagged
+  # work; disagreement should be surfaced to SAGE. Gemini CLI is for UI/design planning
+  # where Figma/Stitch/MCP context matters, and is transitional toward Antigravity.
   planning:
     - {model: claude-sonnet-5, surface: claude-code,   billing: subscription}
     - {model: claude-opus-4-8, surface: claude-code,   billing: subscription, when: hard}
     - {model: claude-fable-5,  surface: claude-code,   billing: subscription, when: highest_stakes}
     - {model: gpt-5.5,         surface: codex,         billing: subscription, role: second_opinion}
+    - {model: gemini-2.5-pro,   surface: gemini-cli,    billing: subscription, role: ui_design_planning}
     - {model: claude-sonnet-5, surface: anthropic-api, billing: metered}   # fallback if subscription capped/unavailable
     - {model: gpt-5.5,         surface: openai-api,    billing: metered}   # fallback
     - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api}   # free open last-resort planner if all Claude/GPT surfaces are down
@@ -48,7 +54,7 @@ tiers:
   # Tier 2: execution (writing, refactoring, shipping code).
   # FORGE repo/build work is capability-first: prefer subscription executor
   # surfaces with real repo cwd/tooling before cheap local models. Ollama remains
-  # fallback for small/simple work or when executor surfaces are unavailable.
+  # fallback for simple/low-risk work or when subscription quota is tight/unavailable.
   execution_routine:
     - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
     - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
