@@ -4,8 +4,10 @@ import { ForgeIcon } from '../components/primitives/ForgeIcon';
 import { OverviewState, Task, TasksState } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
-import { useWorkItemDetail, useWorkItems } from '../lib/useConvex';
+import { addWorkEvent, createWorkItem, updateWorkItem, useWorkItemDetail, useWorkItems } from '../lib/useConvex';
+import { isConvexConfigured } from '../lib/convex';
 import { getWorkRegistrySource, workItemsToTasksState } from '../lib/workRegistry';
+import type { WorkItemPriority, WorkItemStatus } from '../lib/workRegistry';
 import { DISPATCH_URL, fetchDispatchHealth, fetchDispatchSurfaces } from '../lib/dispatchClient';
 
 interface TasksProps {
@@ -19,6 +21,20 @@ const columns: Array<{ id: WorkStatus; label: string; hint: string }> = [
   { id: 'in_progress', label: 'Running', hint: 'Executor or owner active' },
   { id: 'blocked', label: 'Blocked', hint: 'Needs decision / credential / review' },
   { id: 'done', label: 'Done', hint: 'Verified or shipped' },
+];
+
+const createStatuses: Array<{ value: WorkItemStatus; label: string }> = [
+  { value: 'ready', label: 'Ready' },
+  { value: 'in_progress', label: 'Running' },
+  { value: 'blocked', label: 'Blocked' },
+  { value: 'done', label: 'Done' },
+];
+
+const priorities: Array<{ value: WorkItemPriority; label: string }> = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
 ];
 
 const priorityTone = (priority: Task['priority']) =>
@@ -115,6 +131,13 @@ const TaskCard: React.FC<{ task: Task; selected: boolean; onSelect: () => void }
 
 export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newPriority, setNewPriority] = useState<WorkItemPriority>('medium');
+  const [newStatus, setNewStatus] = useState<WorkItemStatus>('ready');
+  const [note, setNote] = useState('');
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
   const liveWorkItems = useWorkItems(100);
   const { data: tasksState, isLoading, error } = useQuery<TasksState>({
     queryKey: ['tasks-state'],
@@ -159,6 +182,85 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
     }, { todo: [], in_progress: [], blocked: [], done: [] });
   }, [tasks]);
 
+  const canWrite = isConvexConfigured();
+  const selectedIsLive = Boolean(selectedWorkItem);
+
+  const runRegistryAction = async (action: () => Promise<void>, successMessage: string) => {
+    setIsMutating(true);
+    setActionError(null);
+    setActionMessage(null);
+    try {
+      await action();
+      setActionMessage(successMessage);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Work registry action failed.');
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleCreateWorkItem = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = newTitle.trim();
+    if (!title) return;
+
+    void runRegistryAction(async () => {
+      const created = await createWorkItem({
+        title,
+        priority: newPriority,
+        status: newStatus,
+        orchestrator: 'SAGE',
+        owner: 'SAGE',
+        executor: 'KERN',
+        surface: 'command-center',
+      });
+      setNewTitle('');
+      setNewPriority('medium');
+      setNewStatus('ready');
+      setSelectedId(created.workId);
+    }, 'Work item created.');
+  };
+
+  const handleStatusChange = (status: WorkItemStatus) => {
+    if (!selectedWorkItem) return;
+    void runRegistryAction(async () => {
+      await updateWorkItem({ workId: selectedWorkItem.workId, status });
+      await addWorkEvent({
+        workId: selectedWorkItem.workId,
+        type: 'status_update',
+        actor: 'SAGE',
+        message: `Status changed to ${status.replace('_', ' ')}`,
+      });
+    }, 'Work item status updated.');
+  };
+
+  const handleAddNote = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedWorkItem || !note.trim()) return;
+    void runRegistryAction(async () => {
+      await addWorkEvent({
+        workId: selectedWorkItem.workId,
+        type: 'note',
+        actor: 'SAGE',
+        message: note.trim(),
+      });
+      setNote('');
+    }, 'Work event added.');
+  };
+
+  const handleCloseWorkItem = () => {
+    if (!selectedWorkItem) return;
+    void runRegistryAction(async () => {
+      await updateWorkItem({ workId: selectedWorkItem.workId, status: 'cancelled' });
+      await addWorkEvent({
+        workId: selectedWorkItem.workId,
+        type: 'closed',
+        actor: 'SAGE',
+        message: 'Closed from Command Center /tasks.',
+      });
+    }, 'Work item closed.');
+  };
+
   return (
     <main className="flex-1 flex flex-col min-h-0 bg-surface-base overflow-hidden font-ui">
       <div className="px-6 py-4 border-b border-surface-border flex items-center gap-3 flex-wrap">
@@ -193,6 +295,50 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
           {error && <span className="rounded-full border border-status-incident/30 bg-status-incident/10 px-2 py-1 text-status-incident">task source fallback</span>}
           {isLoading && <span className="rounded-full border border-accent-primary/30 bg-accent-primary/10 px-2 py-1 text-accent-primary">loading</span>}
         </div>
+        <form onSubmit={handleCreateWorkItem} className="mt-4 rounded-xl border border-surface-border bg-surface-base p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-text-muted">Add work item</div>
+              <div className="mt-1 text-[12px] text-text-secondary">
+                {canWrite ? 'Creates directly in Convex Work Registry.' : 'Convex is not configured; fallback board is read-only.'}
+              </div>
+            </div>
+            {actionMessage && <span className="text-[11px] text-status-healthy">{actionMessage}</span>}
+            {actionError && <span className="text-[11px] text-status-incident">{actionError}</span>}
+          </div>
+          <div className="grid gap-3 lg:grid-cols-[1fr_140px_140px_auto]">
+            <input
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder="Title"
+              disabled={!canWrite || isMutating}
+              className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[12px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            <select
+              value={newPriority}
+              onChange={(event) => setNewPriority(event.target.value as WorkItemPriority)}
+              disabled={!canWrite || isMutating}
+              className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[12px] text-text-primary outline-none focus:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {priorities.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}
+            </select>
+            <select
+              value={newStatus}
+              onChange={(event) => setNewStatus(event.target.value as WorkItemStatus)}
+              disabled={!canWrite || isMutating}
+              className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[12px] text-text-primary outline-none focus:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {createStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+            </select>
+            <button
+              type="submit"
+              disabled={!canWrite || isMutating || !newTitle.trim()}
+              className="rounded-lg bg-accent-primary px-4 py-2 text-[12px] font-bold text-surface-base transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isMutating ? 'Saving…' : 'Add'}
+            </button>
+          </div>
+        </form>
         <div className="mt-4 rounded-xl border border-surface-border bg-surface-base p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -304,6 +450,52 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
                 {selectedWorkItem?.pullRequestUrl && (
                   <a href={selectedWorkItem.pullRequestUrl} className="block text-accent-primary hover:underline" target="_blank" rel="noreferrer">Open GitHub PR →</a>
                 )}
+              </div>
+
+              <div className="rounded-xl border border-surface-border bg-surface-base p-4 space-y-3 text-[12px]">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-text-muted">Live actions</div>
+                  {!canWrite && <div className="mt-1 text-text-muted">Convex unavailable; fallback items remain read-only.</div>}
+                  {canWrite && !selectedIsLive && <div className="mt-1 text-text-muted">Select a Convex live item to update status, close, or add notes.</div>}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {createStatuses.map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      onClick={() => handleStatusChange(status.value)}
+                      disabled={!canWrite || !selectedIsLive || isMutating}
+                      className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-left text-[11px] font-bold text-text-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Mark {status.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseWorkItem}
+                  disabled={!canWrite || !selectedIsLive || isMutating}
+                  className="w-full rounded-lg border border-status-incident/30 bg-status-incident/10 px-3 py-2 text-left text-[11px] font-bold text-status-incident disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Close / cancel item
+                </button>
+                <form onSubmit={handleAddNote} className="space-y-2">
+                  <textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder="Add work event / note"
+                    disabled={!canWrite || !selectedIsLive || isMutating}
+                    rows={3}
+                    className="w-full rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[12px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!canWrite || !selectedIsLive || isMutating || !note.trim()}
+                    className="w-full rounded-lg bg-accent-primary px-3 py-2 text-[11px] font-bold text-surface-base disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Add note
+                  </button>
+                </form>
               </div>
 
               {(selectedWorkItem?.summary || selectedWorkItem?.blocker || selectedWorkItem?.verificationSummary) && (

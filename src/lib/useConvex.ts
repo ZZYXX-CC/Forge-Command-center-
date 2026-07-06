@@ -8,8 +8,8 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { isConvexConfigured } from '@/src/lib/convex';
-import type { WorkRegistryDetail, WorkRegistryItem } from '@/src/lib/workRegistry';
+import { convexClient, isConvexConfigured } from '@/src/lib/convex';
+import type { CreateWorkItemInput, UpdateWorkItemInput, WorkEventInput, WorkRegistryDetail, WorkRegistryItem } from '@/src/lib/workRegistry';
 
 export function useAgentLiveStatus() {
   const data = useQuery(
@@ -90,9 +90,10 @@ export function useBybitBalances() {
 }
 
 export function useWorkItems(limit = 50): WorkRegistryItem[] {
-  if (!isConvexConfigured()) return [];
-
-  const data = useQuery(api.work.listWorkItems, { limit });
+  const data = useQuery(
+    api.work.listWorkItems,
+    isConvexConfigured() ? { limit } : 'skip',
+  );
   return (data ?? []) as WorkRegistryItem[];
 }
 
@@ -102,4 +103,19 @@ export function useWorkItemDetail(workId?: string | null): WorkRegistryDetail | 
     isConvexConfigured() && workId ? { workId } : 'skip',
   );
   return (data ?? null) as WorkRegistryDetail | null;
+}
+
+export async function createWorkItem(input: CreateWorkItemInput): Promise<{ workId: string }> {
+  if (!convexClient) throw new Error('Convex is not configured. Work item changes are unavailable in fallback mode.');
+  return await convexClient.mutation(api.work.createWorkItem, input);
+}
+
+export async function updateWorkItem(input: UpdateWorkItemInput): Promise<void> {
+  if (!convexClient) throw new Error('Convex is not configured. Work item changes are unavailable in fallback mode.');
+  await convexClient.mutation(api.work.updateWorkItem, input);
+}
+
+export async function addWorkEvent(input: WorkEventInput): Promise<void> {
+  if (!convexClient) throw new Error('Convex is not configured. Work item changes are unavailable in fallback mode.');
+  await convexClient.mutation(api.work.addWorkEvent, input);
 }

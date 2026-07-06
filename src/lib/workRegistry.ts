@@ -78,6 +78,35 @@ export interface WorkRegistryDetail {
   decisions: RoutingDecision[];
 }
 
+export interface CreateWorkItemInput {
+  title: string;
+  summary?: string;
+  status: WorkItemStatus;
+  priority: WorkItemPriority;
+  orchestrator: string;
+  owner?: string;
+  executor?: string;
+  surface?: string;
+  model?: string;
+  branch?: string;
+  pullRequestUrl?: string;
+  issueUrl?: string;
+  blocker?: string;
+  verificationStatus?: VerificationStatus;
+  verificationSummary?: string;
+  dueAt?: number;
+}
+
+export type UpdateWorkItemInput = Partial<CreateWorkItemInput> & { workId: string };
+
+export interface WorkEventInput {
+  workId: string;
+  type: string;
+  actor: string;
+  message: string;
+  metadata?: string;
+}
+
 const toTaskStatus = (status: WorkItemStatus): Task['status'] => {
   if (status === 'in_progress' || status === 'blocked' || status === 'done') return status;
   if (status === 'cancelled') return 'done';

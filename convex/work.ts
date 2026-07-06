@@ -70,6 +70,105 @@ export const getWorkItem = query({
   },
 });
 
+export const createWorkItem = mutation({
+  args: {
+    title: v.string(),
+    summary: v.optional(v.string()),
+    status: workStatus,
+    priority,
+    orchestrator: v.string(),
+    owner: v.optional(v.string()),
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+    model: v.optional(v.string()),
+    branch: v.optional(v.string()),
+    pullRequestUrl: v.optional(v.string()),
+    issueUrl: v.optional(v.string()),
+    blocker: v.optional(v.string()),
+    verificationStatus: v.optional(verificationStatus),
+    verificationSummary: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const workId = `work-${now}`;
+    await ctx.db.insert("workItems", {
+      ...args,
+      workId,
+      verificationStatus: args.verificationStatus ?? "not_started",
+      createdAt: now,
+      updatedAt: now,
+    });
+    await ctx.db.insert("workEvents", {
+      workId,
+      type: "created",
+      actor: args.orchestrator,
+      message: `Created work item: ${args.title}`,
+      occurredAt: now,
+    });
+    return { workId };
+  },
+});
+
+export const updateWorkItem = mutation({
+  args: {
+    workId: v.string(),
+    title: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    status: v.optional(workStatus),
+    priority: v.optional(priority),
+    orchestrator: v.optional(v.string()),
+    owner: v.optional(v.string()),
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+    model: v.optional(v.string()),
+    branch: v.optional(v.string()),
+    pullRequestUrl: v.optional(v.string()),
+    issueUrl: v.optional(v.string()),
+    blocker: v.optional(v.string()),
+    verificationStatus: v.optional(verificationStatus),
+    verificationSummary: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("workItems")
+      .withIndex("by_workId", (q) => q.eq("workId", args.workId))
+      .first();
+    if (!existing) throw new Error(`Work item not found: ${args.workId}`);
+
+    const { workId: _workId, ...updates } = args;
+    const patch: Record<string, unknown> = { updatedAt: Date.now() };
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) patch[key] = value;
+    }
+
+    await ctx.db.patch(existing._id, patch);
+    return existing._id;
+  },
+});
+
+export const addWorkEvent = mutation({
+  args: {
+    workId: v.string(),
+    type: v.string(),
+    actor: v.string(),
+    message: v.string(),
+    metadata: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const item = await ctx.db
+      .query("workItems")
+      .withIndex("by_workId", (q) => q.eq("workId", args.workId))
+      .first();
+    if (!item) throw new Error(`Work item not found: ${args.workId}`);
+
+    const now = Date.now();
+    await ctx.db.patch(item._id, { updatedAt: now });
+    return await ctx.db.insert("workEvents", { ...args, occurredAt: now });
+  },
+});
+
 export const upsertWorkItem = mutation({
   args: {
     workId: v.string(),
