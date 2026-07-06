@@ -4,7 +4,8 @@ import { ForgeIcon } from '../components/primitives/ForgeIcon';
 import { OverviewState, Task, TasksState } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
-import { ConvexWorkItem, useWorkItems } from '../lib/useConvex';
+import { useWorkItemDetail, useWorkItems } from '../lib/useConvex';
+import { getWorkRegistrySource, workItemsToTasksState } from '../lib/workRegistry';
 import { DISPATCH_URL, fetchDispatchHealth, fetchDispatchSurfaces } from '../lib/dispatchClient';
 
 interface TasksProps {
@@ -74,29 +75,6 @@ const fallbackFromOverview = (data: OverviewState): TasksState => ({
   upcomingDeadlines: [],
 });
 
-const workItemToTask = (item: ConvexWorkItem): Task => {
-  const status: Task['status'] =
-    item.status === 'in_progress'
-      ? 'in_progress'
-      : item.status === 'blocked'
-        ? 'blocked'
-        : item.status === 'done' || item.status === 'cancelled'
-          ? 'done'
-          : 'todo';
-  const priority: Task['priority'] = item.priority === 'critical' ? 'urgent' : item.priority;
-
-  return {
-    id: item.workId,
-    title: item.title,
-    category: 'OWN BUILDS',
-    status,
-    priority,
-    dueAt: item.dueAt ? new Date(item.dueAt).toISOString().slice(0, 10) : undefined,
-    project: item.branch,
-    assignee: item.executor ?? item.owner,
-  };
-};
-
 const TaskCard: React.FC<{ task: Task; selected: boolean; onSelect: () => void }> = ({ task, selected, onSelect }) => (
   <button
     type="button"
@@ -157,9 +135,12 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
     retry: false,
   });
 
-  const tasks = liveWorkItems.length > 0 ? liveWorkItems.map(workItemToTask) : tasksState.tasks;
-  const selectedWorkItem = selectedId ? liveWorkItems.find((item) => item.workId === selectedId) : liveWorkItems[0];
+  const registryState = useMemo(() => workItemsToTasksState(liveWorkItems, tasksState), [liveWorkItems, tasksState]);
+  const registrySource = getWorkRegistrySource(liveWorkItems);
+  const tasks = registryState.tasks;
   const selected = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
+  const selectedWorkItem = selected ? liveWorkItems.find((item) => item.workId === selected.id) : null;
+  const selectedWorkItemDetail = useWorkItemDetail(selectedWorkItem?.workId);
   const dispatchSurfaces = dispatchSurfacesData?.surfaces ?? [];
   const availableSurfaces = dispatchSurfaces.filter((surface) => surface.available).length;
   const dispatchOnline = dispatchHealth?.status === 'ok';
@@ -207,7 +188,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">KERN GPT-5.5 live</span>
           <span className="rounded-full border border-status-healthy/30 bg-status-healthy/10 px-2 py-1 text-status-healthy">Codex workspace-write live</span>
           <span className={cn('rounded-full border px-2 py-1', liveWorkItems.length > 0 ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : 'border-surface-border bg-surface-overlay text-text-muted')}>
-            {liveWorkItems.length > 0 ? 'Convex live' : 'local task fallback'}
+            {registrySource === 'convex-live' ? 'Convex live' : 'local task fallback'}
           </span>
           {error && <span className="rounded-full border border-status-incident/30 bg-status-incident/10 px-2 py-1 text-status-incident">task source fallback</span>}
           {isLoading && <span className="rounded-full border border-accent-primary/30 bg-accent-primary/10 px-2 py-1 text-accent-primary">loading</span>}
@@ -336,18 +317,44 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
               <div>
                 <div className="mb-2 text-[10px] uppercase tracking-widest text-text-muted">Execution timeline</div>
                 <div className="space-y-2 text-[12px]">
-                  <div className="rounded-lg border border-surface-border bg-surface-base p-3">
-                    <div className="font-bold text-text-primary">Work captured</div>
-                    <div className="text-text-muted">Visible in /tasks. Ready for Convex-backed persistence.</div>
-                  </div>
-                  <div className="rounded-lg border border-surface-border bg-surface-base p-3">
-                    <div className="font-bold text-text-primary">SAGE orchestration</div>
-                    <div className="text-text-muted">Assign owner/executor, track blocker, attach PR/issue.</div>
-                  </div>
-                  <div className="rounded-lg border border-surface-border bg-surface-base p-3">
-                    <div className="font-bold text-text-primary">DISPATCH execution</div>
-                    <div className="text-text-muted">Route to KERN, Codex, Claude Code, Cursor, Ollama, NIM, or OpenRouter.</div>
-                  </div>
+                  {selectedWorkItemDetail ? (
+                    <>
+                      {selectedWorkItemDetail.events.slice(0, 4).map((event) => (
+                        <div key={event._id} className="rounded-lg border border-surface-border bg-surface-base p-3">
+                          <div className="font-bold text-text-primary">{event.type}</div>
+                          <div className="text-text-muted">{event.actor}: {event.message}</div>
+                        </div>
+                      ))}
+                      {selectedWorkItemDetail.runs.slice(0, 2).map((run) => (
+                        <div key={run._id} className="rounded-lg border border-surface-border bg-surface-base p-3">
+                          <div className="font-bold text-text-primary">Executor run: {run.status}</div>
+                          <div className="text-text-muted">{run.executor} via {run.surface}{run.model ? ` · ${run.model}` : ''}</div>
+                        </div>
+                      ))}
+                      {selectedWorkItemDetail.decisions.slice(0, 2).map((decision) => (
+                        <div key={decision._id} className="rounded-lg border border-surface-border bg-surface-base p-3">
+                          <div className="font-bold text-text-primary">DISPATCH decision: {decision.status}</div>
+                          <div className="text-text-muted">{decision.chosenSurface ?? 'no surface'}{decision.chosenModel ? ` · ${decision.chosenModel}` : ''}</div>
+                        </div>
+                      ))}
+                      {selectedWorkItemDetail.events.length === 0 && selectedWorkItemDetail.runs.length === 0 && selectedWorkItemDetail.decisions.length === 0 && (
+                        <div className="rounded-lg border border-surface-border bg-surface-base p-3 text-text-muted">
+                          Live registry item found. Events, executor runs, and DISPATCH decisions will appear here as they are recorded.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-lg border border-surface-border bg-surface-base p-3">
+                        <div className="font-bold text-text-primary">Fallback seed captured</div>
+                        <div className="text-text-muted">Visible in /tasks while Convex workItems are absent or unavailable.</div>
+                      </div>
+                      <div className="rounded-lg border border-surface-border bg-surface-base p-3">
+                        <div className="font-bold text-text-primary">Live registry path</div>
+                        <div className="text-text-muted">Create Convex workItems, append workEvents, and record executorRuns to replace this seed without changing the board UI.</div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

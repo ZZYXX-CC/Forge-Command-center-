@@ -9,32 +9,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isConvexConfigured } from '@/src/lib/convex';
-
-type WorkItemStatus = 'backlog' | 'ready' | 'assigned' | 'in_progress' | 'blocked' | 'review' | 'done' | 'cancelled';
-type WorkItemPriority = 'low' | 'medium' | 'high' | 'critical';
-
-export interface ConvexWorkItem {
-  _id: string;
-  workId: string;
-  title: string;
-  summary?: string;
-  status: WorkItemStatus;
-  priority: WorkItemPriority;
-  orchestrator: string;
-  owner?: string;
-  executor?: string;
-  surface?: string;
-  model?: string;
-  branch?: string;
-  pullRequestUrl?: string;
-  issueUrl?: string;
-  blocker?: string;
-  verificationStatus: 'not_started' | 'running' | 'passed' | 'failed' | 'waived';
-  verificationSummary?: string;
-  createdAt: number;
-  updatedAt: number;
-  dueAt?: number;
-}
+import type { WorkRegistryDetail, WorkRegistryItem } from '@/src/lib/workRegistry';
 
 export function useAgentLiveStatus() {
   const data = useQuery(
@@ -114,12 +89,17 @@ export function useBybitBalances() {
   return data ?? [];
 }
 
-export function useWorkItems(limit = 50): ConvexWorkItem[] {
+export function useWorkItems(limit = 50): WorkRegistryItem[] {
   if (!isConvexConfigured()) return [];
 
-  // `convex/_generated/api` is checked in and may lag new Convex modules until
-  // an authenticated `npx convex dev` regenerates it. Runtime `api.js` uses
-  // `anyApi`, so this cast keeps the UI wired without blocking local builds.
-  const data = useQuery((api as any).work.listWorkItems, { limit });
-  return (data ?? []) as ConvexWorkItem[];
+  const data = useQuery(api.work.listWorkItems, { limit });
+  return (data ?? []) as WorkRegistryItem[];
+}
+
+export function useWorkItemDetail(workId?: string | null): WorkRegistryDetail | null {
+  const data = useQuery(
+    api.work.getWorkItem,
+    isConvexConfigured() && workId ? { workId } : 'skip',
+  );
+  return (data ?? null) as WorkRegistryDetail | null;
 }
