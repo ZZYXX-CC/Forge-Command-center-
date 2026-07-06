@@ -89,15 +89,21 @@ tiers:
     - {model: "qwen/qwen3-coder:free", surface: openrouter, billing: free_api}
     - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}
 
-  # Tier 2c: infrastructure / production-touching. Per hard rule, skip free-tier
-  # attempts; use subscription tools with better judgment and auditability first.
+  # Tier 2c: infrastructure / production-touching.
+  # Prefer capable free surfaces first; always review output with a premium tool.
   execution_infrastructure:
-    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription}
-    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription}
-    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription}
-    - {model: composer-2.5,      surface: cursor,        billing: subscription}
-    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40, role: recovery_if_subscriptions_down}
+    # Free-capable primary
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40, role: primary}
+    # Subscription surfaces for quality + verification fallback
+    - {model: gpt-5.5,           surface: codex-cli-gpt55, billing: subscription, role: verification}
+    - {model: claude-sonnet-5,   surface: claude-code,   billing: subscription, role: verification}
+    - {model: gpt-5.5,           surface: hermes-kern-gpt55, billing: subscription, role: verification}
+    - {model: composer-2.5,      surface: cursor,        billing: subscription, role: verification}
     - {model: opus-or-gpt55,     surface: cursor-pinned, billing: metered}
+
+  # Tier 2d: free infrastructure — nim (deepseek) first, always reviewed
+  execution_free_capable:
+    - {model: "deepseek-ai/deepseek-v4-pro", surface: nim, billing: free_api, rpm: 40}
 
   # Vision / multimodal (screenshots, UI mockups, design review).
   vision:

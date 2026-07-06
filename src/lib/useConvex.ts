@@ -9,7 +9,8 @@
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { convexClient, isConvexConfigured } from '@/src/lib/convex';
-import type { CreateWorkItemInput, UpdateWorkItemInput, WorkEventInput, WorkRegistryDetail, WorkRegistryItem } from '@/src/lib/workRegistry';
+import type { Workflow } from '@/src/types';
+import type { CreateWorkItemInput, ExecutorRun, UpdateWorkItemInput, WorkEventInput, WorkRegistryDetail, WorkRegistryItem } from '@/src/lib/workRegistry';
 
 export function useAgentLiveStatus() {
   const data = useQuery(
@@ -102,7 +103,53 @@ export function useWorkItemDetail(workId?: string | null): WorkRegistryDetail | 
     api.work.getWorkItem,
     isConvexConfigured() && workId ? { workId } : 'skip',
   );
-  return (data ?? null) as WorkRegistryDetail | null;
+  return (data ?? null) as unknown as WorkRegistryDetail | null;
+}
+
+export function useWorkflowsForItem(workItemId?: string | null): Workflow[] {
+  const data = useQuery(
+    api.work.listWorkflowsForItem,
+    isConvexConfigured() && workItemId ? { workItemId, limit: 20 } : 'skip',
+  );
+  return (data ?? []).map((workflow: any) => ({
+    id: workflow.workflowId,
+    workItemId: workflow.workItemId,
+    trigger: workflow.trigger,
+    status: workflow.status,
+    stages: workflow.stages,
+    startTime: workflow.startTime,
+    endTime: workflow.endTime,
+    executor: workflow.executor,
+    surface: workflow.surface,
+    output: workflow.output,
+    dispatchJobId: workflow.dispatchJobId,
+    exitCode: workflow.exitCode,
+    verification: workflow.verification,
+  })) as Workflow[];
+}
+
+export async function createWorkflow(input: Pick<Workflow, 'workItemId' | 'trigger' | 'stages'> & Partial<Pick<Workflow, 'executor' | 'surface'>>): Promise<{ workflowId: string }> {
+  if (!convexClient) throw new Error('Convex is not configured. Workflow changes are unavailable in fallback mode.');
+  return await convexClient.mutation(api.work.createWorkflow, input);
+}
+
+export async function updateWorkflowStage(input: Pick<Workflow, 'stages' | 'status'> & {
+  workflowId: string;
+  dispatchJobId?: string;
+  executor?: string;
+  surface?: string;
+  output?: string;
+  exitCode?: number;
+  verification?: Workflow['verification'];
+  endTime?: number;
+}): Promise<void> {
+  if (!convexClient) throw new Error('Convex is not configured. Workflow changes are unavailable in fallback mode.');
+  await convexClient.mutation(api.work.updateWorkflowStage, input);
+}
+
+export async function recordExecutorRun(input: Omit<ExecutorRun, '_id'>): Promise<void> {
+  if (!convexClient) throw new Error('Convex is not configured. Executor run changes are unavailable in fallback mode.');
+  await convexClient.mutation(api.work.recordExecutorRun, input);
 }
 
 export async function createWorkItem(input: CreateWorkItemInput): Promise<{ workId: string }> {

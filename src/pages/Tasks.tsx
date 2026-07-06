@@ -1,14 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ForgeIcon } from '../components/primitives/ForgeIcon';
-import { OverviewState, Task, TasksState } from '../types';
+import { DispatchJob, DispatchPollResult, OverviewState, Task, TasksState, Workflow, WorkflowStage, WorkflowStep, WorkflowVerification } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
-import { addWorkEvent, createWorkItem, updateWorkItem, useWorkItemDetail, useWorkItems } from '../lib/useConvex';
+import { addWorkEvent, createWorkflow, createWorkItem, recordExecutorRun, updateWorkflowStage, updateWorkItem, useWorkflowsForItem, useWorkItemDetail, useWorkItems } from '../lib/useConvex';
 import { isConvexConfigured } from '../lib/convex';
 import { getWorkRegistrySource, workItemsToTasksState } from '../lib/workRegistry';
 import type { WorkItemPriority, WorkItemStatus } from '../lib/workRegistry';
-import { DISPATCH_URL, fetchDispatchHealth, fetchDispatchSurfaces } from '../lib/dispatchClient';
+import { DISPATCH_URL, cancelTask, createWorkflowRun, fetchDispatchHealth, fetchDispatchSurfaces, pollTask, submitTask } from '../lib/dispatchClient';
 
 interface TasksProps {
   data: OverviewState;
@@ -79,6 +79,92 @@ const dueLabel = (task: Task) => {
 
 const isOverdue = (task: Task) => Boolean(task.dueAt && task.status !== 'done' && new Date(task.dueAt) < new Date(new Date().toISOString().slice(0, 10)));
 
+const runStatusTone = (status?: DispatchPollResult['status']) =>
+  status === 'done'
+    ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy'
+    : status === 'failed' || status === 'cancelled'
+      ? 'border-status-incident/30 bg-status-incident/10 text-status-incident'
+      : status === 'queued' || status === 'running'
+        ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+        : 'border-surface-border bg-surface-overlay text-text-muted';
+
+const statusBadgeLabel = (status?: DispatchPollResult['status']) => {
+  if (status === 'done') return '[DONE]';
+  if (status === 'failed') return '[FAILED]';
+  if (status === 'cancelled') return '[CANCELLED]';
+  if (status === 'queued' || status === 'running') return '[RUNNING]';
+  return '[IDLE]';
+};
+
+const workflowPipeline: Array<{ stage: WorkflowStage; label: string; icon: string }> = [
+  { stage: 'queued', label: 'Trigger', icon: 'play' },
+  { stage: 'dispatched', label: 'Dispatch', icon: 'route' },
+  { stage: 'running', label: 'Executor', icon: 'terminal' },
+  { stage: 'verifying', label: 'Verify', icon: 'shield-check' },
+  { stage: 'done', label: 'Done', icon: 'check-read' },
+];
+
+const createWorkflowStages = (active: WorkflowStage = 'queued'): WorkflowStep[] => {
+  const activeIndex = workflowPipeline.findIndex((step) => step.stage === active);
+  return workflowPipeline.map((step, index) => ({
+    stage: step.stage,
+    label: step.label,
+    status: index < activeIndex ? 'complete' : index === activeIndex ? 'active' : 'pending',
+    timestamp: index === activeIndex ? Date.now() : undefined,
+  }));
+};
+
+const workflowStagesFor = (stage: WorkflowStage, detail?: string, failedAt: WorkflowStage = 'running'): WorkflowStep[] => {
+  if (stage === 'done') {
+    return createWorkflowStages('done').map((step) => ({
+      ...step,
+      status: 'complete',
+      detail: step.stage === 'done' ? detail : step.detail,
+      timestamp: step.timestamp ?? Date.now(),
+    }));
+  }
+
+  if (stage === 'failed' || stage === 'cancelled') {
+    return createWorkflowStages(failedAt).map((step) => step.status === 'active'
+      ? { ...step, status: stage, detail, timestamp: Date.now() }
+      : step);
+  }
+  return createWorkflowStages(stage).map((step) => step.stage === stage ? { ...step, detail } : step);
+};
+
+const workflowTone = (status?: WorkflowStep['status']) =>
+  status === 'complete'
+    ? 'border-status-healthy bg-status-healthy/15 text-status-healthy'
+    : status === 'active'
+      ? 'border-accent-primary bg-accent-primary/15 text-accent-primary animate-pulse'
+      : status === 'failed'
+        ? 'border-status-incident bg-status-incident/15 text-status-incident'
+        : status === 'cancelled'
+          ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+        : 'border-surface-border bg-surface-overlay text-text-muted';
+
+const isWorkflowActive = (workflow?: Workflow | null) =>
+  workflow?.status === 'queued' || workflow?.status === 'dispatched' || workflow?.status === 'running' || workflow?.status === 'verifying';
+
+const isHttpUrl = (value?: string | null) => Boolean(value && /^https?:\/\//i.test(value));
+
+const verificationFromDispatch = (result: DispatchPollResult): WorkflowVerification => {
+  if (result.verification) return result.verification;
+  const cleanExit = result.status === 'done' && (result.exitCode ?? 0) === 0;
+  return {
+    lint: cleanExit,
+    build: cleanExit,
+    exitCode: result.exitCode ?? (cleanExit ? 0 : 1),
+  };
+};
+
+const workflowStepLabel = (step: WorkflowStep, workflow?: Workflow | null) => {
+  if (step.stage === 'running' && workflow?.executor) return `[RUNNING ${workflow.executor}]`;
+  if (step.status === 'failed') return '[FAILED]';
+  if (step.status === 'cancelled') return '[CANCELLED]';
+  return `[${step.stage.toUpperCase()}]`;
+};
+
 const fallbackFromOverview = (data: OverviewState): TasksState => ({
   tasks: data.taskSummary.topTasks.map((task) => ({
     id: task.id,
@@ -138,6 +224,12 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
+  const [dispatchJob, setDispatchJob] = useState<DispatchJob | null>(null);
+  const [dispatchRun, setDispatchRun] = useState<DispatchPollResult | null>(null);
+  const [dispatchOutput, setDispatchOutput] = useState('Select a work item, then start a DISPATCH job.');
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const [isSubmittingJob, setIsSubmittingJob] = useState(false);
+  const terminalRef = useRef<HTMLDivElement | null>(null);
   const liveWorkItems = useWorkItems(100);
   const { data: tasksState, isLoading, error } = useQuery<TasksState>({
     queryKey: ['tasks-state'],
@@ -164,6 +256,13 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const selected = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
   const selectedWorkItem = selected ? liveWorkItems.find((item) => item.workId === selected.id) : null;
   const selectedWorkItemDetail = useWorkItemDetail(selectedWorkItem?.workId);
+  const workflows = useWorkflowsForItem(selectedWorkItem?.workId);
+  const [localWorkflow, setLocalWorkflow] = useState<Workflow | null>(null);
+  const [workflowJob, setWorkflowJob] = useState<DispatchJob | null>(null);
+  const [workflowRun, setWorkflowRun] = useState<DispatchPollResult | null>(null);
+  const [workflowOutput, setWorkflowOutput] = useState('Workflow runner idle.');
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const dispatchSurfaces = dispatchSurfacesData?.surfaces ?? [];
   const availableSurfaces = dispatchSurfaces.filter((surface) => surface.available).length;
   const dispatchOnline = dispatchHealth?.status === 'ok';
@@ -184,6 +283,203 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
 
   const canWrite = isConvexConfigured();
   const selectedIsLive = Boolean(selectedWorkItem);
+  const activeRun = dispatchRun?.status === 'queued' || dispatchRun?.status === 'running';
+  const canRestart = dispatchRun?.status === 'failed' || dispatchRun?.status === 'cancelled';
+  const persistedWorkflow = workflows[0];
+  const currentWorkflow = localWorkflow?.workItemId === selectedWorkItem?.workId && (!persistedWorkflow || localWorkflow.startTime >= persistedWorkflow.startTime)
+    ? localWorkflow
+    : persistedWorkflow;
+  const workflowActive = isWorkflowActive(currentWorkflow);
+  const workflowStages = currentWorkflow?.stages?.length
+    ? currentWorkflow.stages
+    : createWorkflowStages('queued').map((stage) => ({ ...stage, status: 'pending' as const }));
+  const workflowCompleteCount = workflowStages.filter((step) => step.status === 'complete').length;
+  const workflowProgressPct = Math.round((workflowCompleteCount / workflowPipeline.length) * 100);
+  const currentWorkflowOutput = currentWorkflow?.output ?? workflowOutput;
+  const currentWorkflowVerification = currentWorkflow?.verification ?? workflowRun?.verification ?? null;
+  const currentWorkflowExitCode = currentWorkflow?.exitCode ?? workflowRun?.exitCode ?? null;
+
+  useEffect(() => {
+    if (!activeRun || !dispatchJob) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const result = await pollTask(dispatchJob.id);
+        if (cancelled) return;
+        setDispatchRun(result);
+        setDispatchError(null);
+        setDispatchOutput((current) => {
+          const nextOutput = result.output ?? '';
+          const nextError = result.error ? `\n[stderr]\n${result.error}` : '';
+          if (!nextOutput && !nextError) return current;
+          const combined = `${nextOutput}${nextError}`;
+          if (combined.startsWith(current)) return combined;
+          if (current.includes(combined)) return current;
+          return `${current}${current.endsWith('\n') ? '' : '\n'}${combined}`;
+        });
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Dispatch polling failed.';
+          setDispatchRun((current) => ({ ...(current ?? { status: 'running' }), status: 'failed', error: message }));
+          setDispatchError(message);
+        }
+      }
+    };
+
+    void tick();
+    const interval = window.setInterval(() => void tick(), 2_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeRun, dispatchJob]);
+
+  const applyLocalWorkflowPatch = (workflowId: string, patch: Partial<Workflow>) => {
+    setLocalWorkflow((current) => {
+      if (!current || current.id !== workflowId) return current;
+      return { ...current, ...patch };
+    });
+  };
+
+  const persistWorkflowStage = async (
+    workflowId: string,
+    status: WorkflowStage,
+    stages: WorkflowStep[],
+    patch: Omit<Parameters<typeof updateWorkflowStage>[0], 'workflowId' | 'status' | 'stages'> = {},
+  ) => {
+    applyLocalWorkflowPatch(workflowId, { status, stages, ...patch });
+    await updateWorkflowStage({ workflowId, status, stages, ...patch });
+  };
+
+  const persistExecutorRun = async (result: DispatchPollResult, job: DispatchJob, workflow: Workflow, completed = false) => {
+    const executor = result.model ?? workflow.executor ?? 'DISPATCH';
+    const surface = result.surface ?? workflow.surface ?? 'dispatch-auto';
+    await recordExecutorRun({
+      workId: workflow.workItemId,
+      runId: job.id,
+      executor,
+      surface,
+      model: result.model ?? undefined,
+      status: result.status,
+      promptPreview: job.prompt?.slice(0, 500),
+      outputPreview: result.output?.slice(-1000),
+      error: result.error,
+      startedAt: workflow.startTime,
+      completedAt: completed ? Date.now() : undefined,
+      latencyMs: result.latencyMs ?? undefined,
+    });
+  };
+
+  useEffect(() => {
+    if (!workflowJob || !currentWorkflow || !isWorkflowActive(currentWorkflow)) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const result = await pollTask(workflowJob.id);
+        if (cancelled) return;
+
+        setWorkflowRun(result);
+        setWorkflowError(null);
+        setWorkflowOutput((current) => {
+          const nextOutput = result.output ?? '';
+          const nextError = result.error ? `\n[stderr]\n${result.error}` : '';
+          const combined = `${nextOutput}${nextError}`;
+          if (!combined) return current;
+          if (combined.startsWith(current) || current.includes(combined)) return combined;
+          return `${current}${current.endsWith('\n') ? '' : '\n'}${combined}`;
+        });
+
+        const executor = result.model ?? result.surface ?? currentWorkflow.executor ?? 'DISPATCH';
+        const surface = result.surface ?? currentWorkflow.surface ?? 'dispatch-auto';
+
+        if (result.status === 'queued') {
+          await persistWorkflowStage(
+            currentWorkflow.id,
+            'dispatched',
+            workflowStagesFor('dispatched', `job ${workflowJob.id} queued`),
+            { dispatchJobId: workflowJob.id, executor, surface, output: result.output },
+          );
+          await persistExecutorRun(result, workflowJob, { ...currentWorkflow, executor, surface });
+          return;
+        }
+
+        if (result.status === 'running') {
+          await persistWorkflowStage(
+            currentWorkflow.id,
+            'running',
+            workflowStagesFor('running', surface),
+            { dispatchJobId: workflowJob.id, executor, surface, output: result.output, exitCode: result.exitCode ?? undefined },
+          );
+          await persistExecutorRun(result, workflowJob, { ...currentWorkflow, executor, surface });
+          return;
+        }
+
+        if (result.status === 'cancelled') {
+          await persistWorkflowStage(
+            currentWorkflow.id,
+            'cancelled',
+            workflowStagesFor('cancelled', 'DISPATCH run cancelled', 'running'),
+            { dispatchJobId: workflowJob.id, executor, surface, output: result.output, exitCode: result.exitCode ?? undefined, endTime: Date.now() },
+          );
+          await persistExecutorRun(result, workflowJob, { ...currentWorkflow, executor, surface }, true);
+          setWorkflowJob(null);
+          return;
+        }
+
+        const verification = verificationFromDispatch(result);
+        await persistWorkflowStage(
+          currentWorkflow.id,
+          'verifying',
+          workflowStagesFor('verifying', 'lint + build'),
+          { dispatchJobId: workflowJob.id, executor, surface, output: result.output, exitCode: result.exitCode ?? verification.exitCode, verification },
+        );
+
+        const passed = result.status === 'done' && verification.lint && verification.build && verification.exitCode === 0;
+        await persistWorkflowStage(
+          currentWorkflow.id,
+          passed ? 'done' : 'failed',
+          workflowStagesFor(passed ? 'done' : 'failed', passed ? 'verification passed' : 'verification failed', 'verifying'),
+          {
+            dispatchJobId: workflowJob.id,
+            executor,
+            surface,
+            output: result.output,
+            exitCode: result.exitCode ?? verification.exitCode,
+            verification,
+            endTime: Date.now(),
+          },
+        );
+        await persistExecutorRun(result, workflowJob, { ...currentWorkflow, executor, surface }, true);
+        setWorkflowJob(null);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Workflow polling failed.';
+          setWorkflowError(message);
+          setWorkflowRun((current) => ({ ...(current ?? { status: 'running' }), status: 'failed', error: message }));
+          await persistWorkflowStage(
+            currentWorkflow.id,
+            'failed',
+            workflowStagesFor('failed', message, 'running'),
+            { dispatchJobId: workflowJob.id, output: workflowOutput, exitCode: 1, endTime: Date.now() },
+          );
+          setWorkflowJob(null);
+        }
+      }
+    };
+
+    void tick();
+    const interval = window.setInterval(() => void tick(), 2_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [workflowJob, currentWorkflow?.id, currentWorkflow?.status]);
+
+  useEffect(() => {
+    terminalRef.current?.scrollTo({ top: terminalRef.current.scrollHeight, behavior: 'smooth' });
+  }, [dispatchOutput]);
 
   const runRegistryAction = async (action: () => Promise<void>, successMessage: string) => {
     setIsMutating(true);
@@ -259,6 +555,120 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
         message: 'Closed from Command Center /tasks.',
       });
     }, 'Work item closed.');
+  };
+
+  const buildDispatchPayload = (task: Task) => ({
+    repo: selectedWorkItem?.branch ?? selectedWorkItem?.surface ?? undefined,
+    command: task.title,
+    prompt: [
+      `Work item: ${task.title}`,
+      `ID: ${task.id}`,
+      selectedWorkItem?.summary ? `Summary: ${selectedWorkItem.summary}` : null,
+      task.client ? `Client: ${task.client}` : null,
+      task.project ? `Project: ${task.project}` : null,
+      `Priority: ${task.priority}`,
+      `Status: ${task.status}`,
+    ].filter(Boolean).join('\n'),
+  });
+
+  const handleStartJob = async () => {
+    if (!selected) return;
+    setIsSubmittingJob(true);
+    setDispatchError(null);
+    setDispatchOutput(`[START] ${selected.title}\nSubmitting DISPATCH job…`);
+    try {
+      const job = await submitTask(buildDispatchPayload(selected));
+      setDispatchJob(job);
+      setDispatchRun({ status: job.status, output: `[QUEUED] job ${job.id}` });
+      setDispatchOutput((current) => `${current}\n[QUEUED] job ${job.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Dispatch submit failed.';
+      setDispatchRun({ status: 'failed', error: message });
+      setDispatchError(message);
+      setDispatchOutput((current) => `${current}\n[FAILED] ${message}`);
+    } finally {
+      setIsSubmittingJob(false);
+    }
+  };
+
+  const handleStartWorkflow = async () => {
+    if (!selected || !selectedWorkItem) return;
+    setIsStartingWorkflow(true);
+    setWorkflowError(null);
+    setWorkflowRun(null);
+    setWorkflowJob(null);
+    let workflowId: string | null = null;
+    const queuedStages = createWorkflowStages('queued');
+    try {
+      const created = await createWorkflow({
+        workItemId: selectedWorkItem.workId,
+        trigger: selected.title,
+        stages: queuedStages,
+        executor: selectedWorkItem.executor ?? 'KERN',
+        surface: selectedWorkItem.surface ?? 'dispatch-auto',
+      });
+      workflowId = created.workflowId;
+      const workflow: Workflow = {
+        id: created.workflowId,
+        workItemId: selectedWorkItem.workId,
+        trigger: selected.title,
+        status: 'queued',
+        stages: queuedStages,
+        startTime: Date.now(),
+        executor: selectedWorkItem.executor ?? 'KERN',
+        surface: selectedWorkItem.surface ?? 'dispatch-auto',
+      };
+      setLocalWorkflow(workflow);
+      setWorkflowOutput(`[WORKFLOW] ${created.workflowId}\n[QUEUED] ${selected.title}\nSubmitting to DISPATCH...`);
+
+      const job = await createWorkflowRun({
+        ...buildDispatchPayload(selected),
+        workflowId: created.workflowId,
+        workItemId: selectedWorkItem.workId,
+        trigger: selected.title,
+      });
+      const dispatchedStages = workflowStagesFor('dispatched', `job ${job.id}`);
+      setWorkflowJob(job);
+      setWorkflowRun({ status: job.status, output: `[DISPATCHED] job ${job.id}` });
+      await persistWorkflowStage(created.workflowId, 'dispatched', dispatchedStages, { dispatchJobId: job.id });
+      await recordExecutorRun({
+        workId: selectedWorkItem.workId,
+        runId: job.id,
+        executor: selectedWorkItem.executor ?? 'DISPATCH',
+        surface: selectedWorkItem.surface ?? 'dispatch-auto',
+        status: job.status,
+        promptPreview: job.prompt?.slice(0, 500),
+        startedAt: workflow.startTime,
+      });
+      setWorkflowOutput((current) => `${current}\n[DISPATCHED] job ${job.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Workflow start failed.';
+      const failedStages = workflowStagesFor('failed', message);
+      setWorkflowRun({ status: 'failed', error: message });
+      setWorkflowError(message);
+      setLocalWorkflow((workflow) => workflow ? { ...workflow, status: 'failed', stages: failedStages, output: message, endTime: Date.now() } : workflow);
+      if (workflowId) {
+        await updateWorkflowStage({ workflowId, status: 'failed', stages: failedStages, output: message, exitCode: 1, endTime: Date.now() });
+      }
+      setWorkflowOutput((current) => `${current}\n[FAILED] ${message}`);
+    } finally {
+      setIsStartingWorkflow(false);
+    }
+  };
+
+  const handleRestartJob = () => {
+    void handleStartJob();
+  };
+
+  const handleRerunWorkflow = () => {
+    void handleStartWorkflow();
+  };
+
+  const handleCancelJob = async () => {
+    if (!dispatchJob) return;
+    const result = await cancelTask(dispatchJob);
+    setDispatchRun(result);
+    setDispatchOutput((current) => `${current}${current.endsWith('\n') ? '' : '\n'}${result.output ?? '[CANCELLED]'}`);
   };
 
   return (
@@ -496,6 +906,149 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
                     Add note
                   </button>
                 </form>
+              </div>
+
+              <div className="rounded-xl border border-surface-border bg-surface-base p-4 space-y-3 text-[12px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-text-muted">Execution Cockpit</div>
+                    <div className="mt-1 text-text-secondary">Submit and watch DISPATCH executor output for the selected work item.</div>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full border px-2 py-1 font-mono text-[10px]', runStatusTone(dispatchRun?.status))}>
+                    {statusBadgeLabel(dispatchRun?.status)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStartJob}
+                    disabled={!selected || activeRun || isSubmittingJob}
+                    className="rounded-lg bg-accent-primary px-3 py-2 text-[11px] font-bold text-surface-base disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSubmittingJob ? 'Starting…' : 'Start Job'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRestartJob}
+                    disabled={!selected || activeRun || isSubmittingJob || !canRestart}
+                    className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[11px] font-bold text-text-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelJob}
+                    disabled={!dispatchJob || !activeRun}
+                    className="rounded-lg border border-status-incident/30 bg-status-incident/10 px-3 py-2 text-[11px] font-bold text-status-incident disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {dispatchError && <div className="text-[11px] text-status-incident">{dispatchError}</div>}
+                <div
+                  ref={terminalRef}
+                  className="font-mono text-xs bg-black text-green-400 p-3 rounded-lg h-64 overflow-auto whitespace-pre-wrap break-words"
+                >
+                  {dispatchOutput}
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 font-mono text-[10px] text-text-secondary">
+                  <div>job: <span className="text-text-primary">{dispatchJob?.id ?? '—'}</span></div>
+                  <div>surface: <span className="text-text-primary">{dispatchRun?.surface ?? '—'}</span></div>
+                  <div>model: <span className="text-text-primary">{dispatchRun?.model ?? '—'}</span></div>
+                  <div>latency: <span className="text-text-primary">{dispatchRun?.latencyMs != null ? `${dispatchRun.latencyMs}ms` : '—'}</span></div>
+                  <div>exit code: <span className="text-text-primary">{dispatchRun?.exitCode ?? '—'}</span></div>
+                  <div>status: <span className="text-text-primary">{dispatchRun?.status ?? 'idle'}</span></div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-surface-border bg-surface-base p-4 space-y-4 text-[12px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-text-muted">Workflow Runner</div>
+                    <div className="mt-1 text-text-secondary">Work Registry → DISPATCH → Executor → Verify → Convex closeout.</div>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full border px-2 py-1 font-mono text-[10px]', workflowTone(workflowStages.find((stage) => stage.status === 'active' || stage.status === 'failed')?.status))}>
+                    [{currentWorkflow?.status?.toUpperCase() ?? 'IDLE'}]
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {workflowStages.map((stage, index, allStages) => {
+                    const pipelineMeta = workflowPipeline.find((step) => step.stage === stage.stage);
+                    return (
+                      <React.Fragment key={`${stage.stage}-${index}`}>
+                        <div className={cn('min-w-[92px] rounded-lg border px-2 py-2 text-center transition-colors', workflowTone(stage.status))} title={stage.detail}>
+                          <ForgeIcon name={pipelineMeta?.icon ?? 'alt-arrow-right'} size="sm" className="mx-auto mb-1" />
+                          <div className="font-bold uppercase tracking-wide">{stage.label}</div>
+                          <div className="mt-1 font-mono text-[10px]">{workflowStepLabel(stage, currentWorkflow)}</div>
+                        </div>
+                        {index < allStages.length - 1 && <div className="text-text-muted">→</div>}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-surface-overlay">
+                  <div
+                    className={cn('h-full rounded-full transition-all', currentWorkflow?.status === 'failed' ? 'bg-status-incident' : 'bg-accent-primary')}
+                    style={{ width: `${Math.max(currentWorkflow ? 8 : 0, workflowProgressPct)}%` }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 font-mono text-[10px] text-text-secondary">
+                  <div>workflow: <span className="text-text-primary">{currentWorkflow?.id ?? '—'}</span></div>
+                  <div>dispatch: <span className="text-text-primary">{currentWorkflow?.dispatchJobId ?? workflowJob?.id ?? '—'}</span></div>
+                  <div>executor: <span className="text-text-primary">{currentWorkflow?.executor ?? workflowRun?.model ?? '—'}</span></div>
+                  <div>surface: <span className="text-text-primary">{currentWorkflow?.surface ?? workflowRun?.surface ?? '—'}</span></div>
+                  <div>exit code: <span className="text-text-primary">{currentWorkflowExitCode ?? '—'}</span></div>
+                  <div>verification: <span className={cn(currentWorkflowVerification?.lint && currentWorkflowVerification?.build ? 'text-status-healthy' : currentWorkflowVerification ? 'text-status-incident' : 'text-text-primary')}>
+                    {currentWorkflowVerification ? `lint ${currentWorkflowVerification.lint ? 'ok' : 'fail'} / build ${currentWorkflowVerification.build ? 'ok' : 'fail'}` : selectedWorkItem?.verificationStatus ?? '—'}
+                  </span></div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[10px] font-mono">
+                  <span className={cn('rounded-full border px-2 py-1', currentWorkflowVerification?.lint ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : currentWorkflowVerification ? 'border-status-incident/30 bg-status-incident/10 text-status-incident' : 'border-surface-border bg-surface-overlay text-text-muted')}>
+                    lint {currentWorkflowVerification ? (currentWorkflowVerification.lint ? 'passed' : 'failed') : 'pending'}
+                  </span>
+                  <span className={cn('rounded-full border px-2 py-1', currentWorkflowVerification?.build ? 'border-status-healthy/30 bg-status-healthy/10 text-status-healthy' : currentWorkflowVerification ? 'border-status-incident/30 bg-status-incident/10 text-status-incident' : 'border-surface-border bg-surface-overlay text-text-muted')}>
+                    build {currentWorkflowVerification ? (currentWorkflowVerification.build ? 'passed' : 'failed') : 'pending'}
+                  </span>
+                  <span className="rounded-full border border-surface-border bg-surface-overlay px-2 py-1 text-text-muted">
+                    {workflowCompleteCount}/{workflowPipeline.length} stages
+                  </span>
+                </div>
+                {workflowError && <div className="text-[11px] text-status-incident">{workflowError}</div>}
+                {currentWorkflowOutput && currentWorkflowOutput !== 'Workflow runner idle.' && (
+                  <div className="space-y-2">
+                    {isHttpUrl(currentWorkflowOutput) ? (
+                      <a href={currentWorkflowOutput} className="block text-accent-primary hover:underline" target="_blank" rel="noreferrer">
+                        Open executor output →
+                      </a>
+                    ) : (
+                      <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(currentWorkflowOutput)}`} download={`${currentWorkflow?.id ?? 'workflow'}-output.txt`} className="block text-accent-primary hover:underline">
+                        Download executor output →
+                      </a>
+                    )}
+                    <div className="max-h-32 overflow-auto rounded-lg bg-black p-3 font-mono text-[10px] text-green-400 whitespace-pre-wrap break-words">
+                      {currentWorkflowOutput}
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStartWorkflow}
+                    disabled={!canWrite || !selectedIsLive || workflowActive || isStartingWorkflow}
+                    className="rounded-lg bg-accent-primary px-3 py-2 text-[11px] font-bold text-surface-base disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isStartingWorkflow ? 'Starting…' : 'Start Workflow'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRerunWorkflow}
+                    disabled={!canWrite || !selectedIsLive || workflowActive || isStartingWorkflow || !currentWorkflow}
+                    className="rounded-lg border border-surface-border bg-surface-overlay px-3 py-2 text-[11px] font-bold text-text-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Re-run
+                  </button>
+                </div>
+                {!selectedIsLive && <div className="text-[11px] text-text-muted">Select a Convex live work item to persist workflows.</div>}
               </div>
 
               {(selectedWorkItem?.summary || selectedWorkItem?.blocker || selectedWorkItem?.verificationSummary) && (

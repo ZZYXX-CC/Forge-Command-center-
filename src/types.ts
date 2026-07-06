@@ -326,6 +326,60 @@ export interface TasksState {
   }>;
 }
 
+export type DispatchJobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+
+export type WorkflowStage = 'queued' | 'dispatched' | 'running' | 'verifying' | 'done' | 'failed' | 'cancelled';
+export type WorkflowStatus = WorkflowStage;
+
+export interface WorkflowVerification {
+  lint: boolean;
+  build: boolean;
+  exitCode: number;
+}
+
+export interface WorkflowStep {
+  stage: WorkflowStage;
+  label: string;
+  status: 'pending' | 'active' | 'complete' | 'failed' | 'cancelled';
+  timestamp?: number;
+  detail?: string;
+}
+
+export interface Workflow {
+  id: string;
+  workItemId: string;
+  trigger: string;
+  status: WorkflowStatus;
+  stages: WorkflowStep[];
+  startTime: number;
+  endTime?: number;
+  executor?: string;
+  surface?: string;
+  output?: string;
+  dispatchJobId?: string;
+  exitCode?: number | null;
+  verification?: WorkflowVerification;
+}
+
+export interface DispatchJob {
+  id: string;
+  status: DispatchJobStatus;
+  repo?: string;
+  command?: string;
+  prompt?: string;
+}
+
+export interface DispatchPollResult {
+  status: DispatchJobStatus;
+  output?: string;
+  error?: string;
+  exitCode?: number | null;
+  surface?: string | null;
+  model?: string | null;
+  latencyMs?: number | null;
+  verification?: WorkflowVerification | null;
+}
+
 // --- Clients ---
 export interface ClientProject {
   id: string;

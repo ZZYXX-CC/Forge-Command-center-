@@ -1,4 +1,4 @@
-import type { Task, TasksState } from '@/src/types';
+import type { Task, TasksState, Workflow } from '@/src/types';
 
 export type WorkItemStatus = 'backlog' | 'ready' | 'assigned' | 'in_progress' | 'blocked' | 'review' | 'done' | 'cancelled';
 export type WorkItemPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -76,6 +76,7 @@ export interface WorkRegistryDetail {
   events: WorkRegistryEvent[];
   runs: ExecutorRun[];
   decisions: RoutingDecision[];
+  workflows?: Workflow[];
 }
 
 export interface CreateWorkItemInput {

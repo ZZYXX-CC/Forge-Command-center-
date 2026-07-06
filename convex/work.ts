@@ -20,6 +20,28 @@ const verificationStatus = v.union(
   v.literal("waived"),
 );
 
+const workflowStage = v.union(
+  v.literal("queued"),
+  v.literal("dispatched"),
+  v.literal("running"),
+  v.literal("verifying"),
+  v.literal("done"),
+  v.literal("failed"),
+  v.literal("cancelled"),
+);
+const workflowStages = v.array(v.object({
+  stage: workflowStage,
+  label: v.string(),
+  status: v.union(v.literal("pending"), v.literal("active"), v.literal("complete"), v.literal("failed"), v.literal("cancelled")),
+  timestamp: v.optional(v.number()),
+  detail: v.optional(v.string()),
+}));
+const workflowVerification = v.object({
+  lint: v.boolean(),
+  build: v.boolean(),
+  exitCode: v.number(),
+});
+
 export const listWorkItems = query({
   args: {
     status: v.optional(workStatus),
@@ -48,7 +70,7 @@ export const getWorkItem = query({
       .first();
     if (!item) return null;
 
-    const [events, runs, decisions] = await Promise.all([
+    const [events, runs, decisions, workflows] = await Promise.all([
       ctx.db
         .query("workEvents")
         .withIndex("by_workId_occurredAt", (q) => q.eq("workId", args.workId))
@@ -64,9 +86,152 @@ export const getWorkItem = query({
         .withIndex("by_workId_decidedAt", (q) => q.eq("workId", args.workId))
         .order("desc")
         .take(50),
+      ctx.db
+        .query("workflows")
+        .withIndex("by_workItemId_updatedAt", (q) => q.eq("workItemId", args.workId))
+        .order("desc")
+        .take(20),
     ]);
 
-    return { item, events, runs, decisions };
+    return { item, events, runs, decisions, workflows };
+  },
+});
+
+export const listWorkflowsForItem = query({
+  args: { workItemId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("workflows")
+      .withIndex("by_workItemId_updatedAt", (q) => q.eq("workItemId", args.workItemId))
+      .order("desc")
+      .take(args.limit ?? 20);
+  },
+});
+
+export const createWorkflow = mutation({
+  args: {
+    workItemId: v.string(),
+    trigger: v.string(),
+    stages: workflowStages,
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const item = await ctx.db
+      .query("workItems")
+      .withIndex("by_workId", (q) => q.eq("workId", args.workItemId))
+      .first();
+    if (!item) throw new Error(`Work item not found: ${args.workItemId}`);
+
+    const workflowId = `workflow-${now}`;
+    await ctx.db.insert("workflows", {
+      ...args,
+      workflowId,
+      status: "queued",
+      startTime: now,
+      updatedAt: now,
+    });
+    await ctx.db.patch(item._id, { status: "in_progress", verificationStatus: "not_started", updatedAt: now });
+    await ctx.db.insert("workEvents", {
+      workId: args.workItemId,
+      type: "workflow_queued",
+      actor: "Command Center",
+      message: `Workflow queued: ${workflowId}`,
+      occurredAt: now,
+    });
+    return { workflowId };
+  },
+});
+
+export const updateWorkflowStage = mutation({
+  args: {
+    workflowId: v.string(),
+    status: workflowStage,
+    stages: workflowStages,
+    dispatchJobId: v.optional(v.string()),
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+    output: v.optional(v.string()),
+    exitCode: v.optional(v.number()),
+    verification: v.optional(workflowVerification),
+    endTime: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("workflows")
+      .withIndex("by_workflowId", (q) => q.eq("workflowId", args.workflowId))
+      .first();
+    if (!existing) throw new Error(`Workflow not found: ${args.workflowId}`);
+
+    const now = Date.now();
+    const { workflowId: _workflowId, ...updates } = args;
+    await ctx.db.patch(existing._id, { ...updates, updatedAt: now });
+
+    const item = await ctx.db
+      .query("workItems")
+      .withIndex("by_workId", (q) => q.eq("workId", existing.workItemId))
+      .first();
+    if (item) {
+      const terminal = args.status === "done" || args.status === "failed" || args.status === "cancelled";
+      const verificationSummary = args.verification
+        ? `lint ${args.verification.lint ? "passed" : "failed"}; build ${args.verification.build ? "passed" : "failed"}; exit ${args.verification.exitCode}`
+        : undefined;
+      const patch: Record<string, unknown> = {
+        updatedAt: now,
+        executor: args.executor ?? item.executor,
+        surface: args.surface ?? item.surface,
+      };
+      if (args.status === "verifying") patch.verificationStatus = "running";
+      if (args.status === "done") {
+        patch.status = "done";
+        patch.verificationStatus = "passed";
+        patch.verificationSummary = verificationSummary ?? "Workflow completed.";
+      }
+      if (args.status === "failed") {
+        patch.status = "blocked";
+        patch.verificationStatus = "failed";
+        patch.verificationSummary = verificationSummary ?? "Workflow failed.";
+      }
+      await ctx.db.patch(item._id, patch);
+      if (args.dispatchJobId) {
+        const existingRun = await ctx.db
+          .query("executorRuns")
+          .withIndex("by_runId", (q) => q.eq("runId", args.dispatchJobId!))
+          .first();
+        const run: {
+          workId: string;
+          runId: string;
+          executor: string;
+          surface: string;
+          status: string;
+          outputPreview?: string;
+          startedAt: number;
+          completedAt?: number;
+        } = {
+          workId: existing.workItemId,
+          runId: args.dispatchJobId,
+          executor: args.executor ?? item.executor ?? "DISPATCH",
+          surface: args.surface ?? item.surface ?? "dispatch-auto",
+          status: args.status,
+          startedAt: existing.startTime,
+        };
+        if (args.output) run.outputPreview = args.output.slice(0, 1_000);
+        if (terminal) run.completedAt = args.endTime ?? now;
+        if (existingRun) await ctx.db.patch(existingRun._id, run);
+        else await ctx.db.insert("executorRuns", run);
+      }
+      await ctx.db.insert("workEvents", {
+        workId: existing.workItemId,
+        type: terminal ? "workflow_completed" : "workflow_stage",
+        actor: "Command Center",
+        message: `Workflow ${existing.workflowId} ${args.status}`,
+        metadata: JSON.stringify({ dispatchJobId: args.dispatchJobId, verification: args.verification }),
+        occurredAt: now,
+      });
+    }
+
+    return existing._id;
   },
 });
 

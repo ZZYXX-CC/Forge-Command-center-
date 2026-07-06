@@ -203,4 +203,49 @@ export default defineSchema({
     .index("by_runId", ["runId"])
     .index("by_workId_startedAt", ["workId", "startedAt"])
     .index("by_surface_startedAt", ["surface", "startedAt"]),
+
+  workflows: defineTable({
+    workflowId: v.string(),
+    workItemId: v.string(),
+    trigger: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("dispatched"),
+      v.literal("running"),
+      v.literal("verifying"),
+      v.literal("done"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+    ),
+    stages: v.array(v.object({
+      stage: v.union(
+        v.literal("queued"),
+        v.literal("dispatched"),
+        v.literal("running"),
+        v.literal("verifying"),
+        v.literal("done"),
+        v.literal("failed"),
+        v.literal("cancelled"),
+      ),
+      label: v.string(),
+      status: v.union(v.literal("pending"), v.literal("active"), v.literal("complete"), v.literal("failed"), v.literal("cancelled")),
+      timestamp: v.optional(v.number()),
+      detail: v.optional(v.string()),
+    })),
+    startTime: v.number(),
+    endTime: v.optional(v.number()),
+    executor: v.optional(v.string()),
+    surface: v.optional(v.string()),
+    output: v.optional(v.string()),
+    dispatchJobId: v.optional(v.string()),
+    exitCode: v.optional(v.number()),
+    verification: v.optional(v.object({
+      lint: v.boolean(),
+      build: v.boolean(),
+      exitCode: v.number(),
+    })),
+    updatedAt: v.number(),
+  })
+    .index("by_workItemId_updatedAt", ["workItemId", "updatedAt"])
+    .index("by_workflowId", ["workflowId"]),
 });
