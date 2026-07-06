@@ -1,4 +1,5 @@
 import type { TasksState, Task } from '@/src/types';
+import { generateCommandCenterSeedTasks } from '@/src/lib/workQueueSeed';
 // import { paperclip } from '@/src/lib/paperclip';
 
 const USE_PAPERCLIP_MOCK = true;
@@ -7,6 +8,7 @@ function generateMockTasksState(): TasksState {
   const now = Date.now();
 
   const tasks: Task[] = [
+    ...generateCommandCenterSeedTasks(now),
     // CLIENT WORK
     { id: 't1', title: 'Review Acme Corp deliverables', category: 'CLIENT WORK', status: 'in_progress', priority: 'high', dueAt: new Date(now + 2 * 86400000).toISOString().slice(0, 10), client: 'Acme Corp', project: 'Brand Refresh' },
     { id: 't2', title: 'TechStart API integration', category: 'CLIENT WORK', status: 'todo', priority: 'urgent', dueAt: new Date(now + 5 * 86400000).toISOString().slice(0, 10), client: 'TechStart', project: 'SaaS Platform' },
