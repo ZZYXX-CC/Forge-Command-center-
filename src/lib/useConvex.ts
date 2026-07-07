@@ -10,7 +10,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { convexClient, isConvexConfigured } from '@/src/lib/convex';
 import type { Workflow } from '@/src/types';
-import type { CreateWorkItemInput, ExecutorRun, RoutingDecisionInput, UpdateWorkItemInput, VerificationRunInput, WorkEventInput, WorkRegistryDetail, WorkRegistryEvent, WorkRegistryItem } from '@/src/lib/workRegistry';
+import type { CreateWorkItemInput, ExecutorRun, RoutingDecision, RoutingDecisionInput, UpdateWorkItemInput, VerificationRunInput, WorkEventInput, WorkRegistryDetail, WorkRegistryEvent, WorkRegistryItem } from '@/src/lib/workRegistry';
 import type { DispatchRegistryModel } from '@/src/lib/dispatchClient';
 
 export function useAgentLiveStatus() {
@@ -159,6 +159,22 @@ export async function updateWorkflowStage(input: Pick<Workflow, 'stages' | 'stat
 export async function recordExecutorRun(input: Omit<ExecutorRun, '_id'>): Promise<void> {
   if (!convexClient) throw new Error('Convex is not configured. Executor run changes are unavailable in fallback mode.');
   await convexClient.mutation(api.work.recordExecutorRun, input);
+}
+
+export function useExecutorRuns(limit = 50, workId?: string | null): ExecutorRun[] {
+  const data = useQuery(
+    api.work.listExecutorRuns,
+    isConvexConfigured() ? { limit, workId: workId ?? undefined } : 'skip',
+  );
+  return (data ?? []) as ExecutorRun[];
+}
+
+export function useRoutingDecisions(limit = 50, workId?: string | null): RoutingDecision[] {
+  const data = useQuery(
+    api.work.listRoutingDecisions,
+    isConvexConfigured() ? { limit, workId: workId ?? undefined } : 'skip',
+  );
+  return (data ?? []) as RoutingDecision[];
 }
 
 export async function recordRoutingDecision(input: RoutingDecisionInput): Promise<string | void> {

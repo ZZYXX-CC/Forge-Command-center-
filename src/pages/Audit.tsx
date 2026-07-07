@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, AlertTriangle, CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileText, GitBranch, PlayCircle, Search, XCircle } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { useWorkEvents } from '@/src/lib/useConvex';
+import { useExecutorRuns, useRoutingDecisions, useWorkEvents } from '@/src/lib/useConvex';
 import type { OverviewState } from '../types';
-import type { WorkRegistryEvent } from '@/src/lib/workRegistry';
+import type { ExecutorRun, RoutingDecision, WorkRegistryEvent } from '@/src/lib/workRegistry';
 import { LogEntry, LogViewer } from '@/src/components/ui/LogViewer';
 
 interface AuditProps {
@@ -76,11 +76,46 @@ const formatMetadataPreview = (metadata: Record<string, unknown>, maxLength = 24
   return `${rendered.slice(0, maxLength)}\n... truncated ${rendered.length - maxLength} chars`;
 };
 
+const toRunTime = (run: ExecutorRun): number => {
+  const value = Number(run.startedAt);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const toDecisionTime = (decision: RoutingDecision): number => {
+  const value = Number(decision.decidedAt);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const compactPreview = (value?: string, maxLength = 140): string => {
+  if (!value) return '';
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength)}...`;
+};
+
+const runLevel = (run: ExecutorRun): EventLevel => {
+  const status = (run.status ?? '').toLowerCase();
+  if (status.includes('error') || status.includes('fail') || status.includes('timeout')) return 'error';
+  if (status.includes('running') || status.includes('progress')) return 'info';
+  if (status.includes('ok') || status.includes('done') || status.includes('success')) return 'success';
+  return 'debug';
+};
+
+const decisionLevel = (decision: RoutingDecision): EventLevel => {
+  const status = (decision.status ?? '').toLowerCase();
+  if (status.includes('error') || status.includes('fail') || status.includes('timeout') || status.includes('no_available')) return 'error';
+  if (status.includes('pending') || status.includes('would')) return 'info';
+  if (status.includes('ok') || status.includes('executed')) return 'success';
+  return 'debug';
+};
+
 export const Audit: React.FC<AuditProps> = ({ data }) => {
   void data;
   const [query, setQuery] = useState('');
   const [streamClearedAt, setStreamClearedAt] = useState<number | null>(null);
   const events = useWorkEvents(250);
+  const executorRuns = useExecutorRuns(30);
+  const routingDecisions = useRoutingDecisions(30);
 
   const filteredEvents = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -103,6 +138,8 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
   const warnings = events.filter((event) => eventLevel(event) === 'warn').length;
   const successes = events.filter((event) => eventLevel(event) === 'success').length;
   const latest = events[0];
+  const visibleRuns = useMemo(() => executorRuns.slice(0, 12), [executorRuns]);
+  const visibleDecisions = useMemo(() => routingDecisions.slice(0, 12), [routingDecisions]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-base overflow-y-auto">
@@ -132,10 +169,10 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
             { label: 'Warnings', value: warnings, tone: warnings ? 'degraded' : 'healthy', icon: AlertTriangle },
             { label: 'Completed', value: successes, tone: 'healthy', icon: CheckCircle2 },
             {
-              label: 'Latest',
-              value: latest ? formatRelativeEventTime(latest) : 'none',
+              label: 'Runs / Routes',
+              value: `${executorRuns.length}/${routingDecisions.length}`,
               tone: 'neutral',
-              icon: Clock,
+              icon: PlayCircle,
             },
           ].map((kpi) => (
             <div key={kpi.label} className="p-4 bg-surface-raised border border-surface-border rounded-lg">
@@ -174,6 +211,16 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-emerald-accent" />
               <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Recent Detail</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-surface-raised border border-surface-border rounded-lg">
+                <div className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Latest Event</div>
+                <div className="text-label-sm font-mono text-text-primary mt-1">{latest ? formatRelativeEventTime(latest) : 'none'}</div>
+              </div>
+              <div className="p-3 bg-surface-raised border border-surface-border rounded-lg">
+                <div className="text-[9px] font-bold uppercase tracking-wider text-text-muted">Latest Run</div>
+                <div className="text-label-sm font-mono text-text-primary mt-1">{visibleRuns[0] ? formatDistanceToNow(new Date(toRunTime(visibleRuns[0])), { addSuffix: true }) : 'none'}</div>
+              </div>
             </div>
             <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
               {filteredEvents.slice(0, 30).map((event) => {
@@ -218,8 +265,97 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
           </aside>
         </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <section className="min-w-0 space-y-4">
+            <div className="flex items-center gap-2">
+              <PlayCircle className="w-4 h-4 text-emerald-accent" />
+              <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Recent Executor Runs</h2>
+            </div>
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {visibleRuns.map((run) => {
+                const level = runLevel(run);
+                return (
+                  <div key={run._id || run.runId} className="p-3 bg-surface-raised border border-surface-border rounded-lg">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted truncate">{run.workId ?? 'unlinked-run'}</div>
+                        <div className="text-label-sm font-bold text-text-primary mt-1 truncate">{run.surface}{run.model ? ` / ${run.model}` : ''}</div>
+                      </div>
+                      <span className={cn(
+                        'px-2 py-1 rounded text-[9px] font-bold uppercase shrink-0',
+                        level === 'error' ? 'bg-status-incident/10 text-status-incident' :
+                          level === 'success' ? 'bg-status-healthy/10 text-status-healthy' :
+                            level === 'info' ? 'bg-status-info/10 text-status-info' : 'bg-surface-base text-text-muted',
+                      )}>
+                        {run.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-mono text-text-muted">
+                      <span>{toRunTime(run) ? formatDistanceToNow(new Date(toRunTime(run)), { addSuffix: true }) : 'unknown'}</span>
+                      <span className="text-right">{typeof run.latencyMs === 'number' ? `${run.latencyMs}ms` : run.completedAt ? 'complete' : 'open'}</span>
+                    </div>
+                    {(run.error || run.outputPreview || run.promptPreview) && (
+                      <div className="mt-2 text-[10px] text-text-secondary break-words">
+                        {compactPreview(run.error || run.outputPreview || run.promptPreview)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {visibleRuns.length === 0 && (
+                <div className="p-6 bg-surface-raised border border-surface-border rounded-lg text-center text-text-muted text-label-sm">
+                  No executor runs recorded yet.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="min-w-0 space-y-4">
+            <div className="flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-emerald-accent" />
+              <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Recent Route Decisions</h2>
+            </div>
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {visibleDecisions.map((decision) => {
+                const level = decisionLevel(decision);
+                const chosen = [decision.chosenSurface, decision.chosenModel].filter(Boolean).join(' / ') || 'no surface';
+                return (
+                  <div key={decision._id || decision.sourceId || `${decision.task}-${decision.decidedAt}`} className="p-3 bg-surface-raised border border-surface-border rounded-lg">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted truncate">{decision.workId ?? decision.sourceId ?? 'unlinked-route'}</div>
+                        <div className="text-label-sm font-bold text-text-primary mt-1 truncate">{chosen}</div>
+                      </div>
+                      <span className={cn(
+                        'px-2 py-1 rounded text-[9px] font-bold uppercase shrink-0',
+                        level === 'error' ? 'bg-status-incident/10 text-status-incident' :
+                          level === 'success' ? 'bg-status-healthy/10 text-status-healthy' :
+                            level === 'info' ? 'bg-status-info/10 text-status-info' : 'bg-surface-base text-text-muted',
+                      )}>
+                        {decision.status}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-mono text-text-muted">
+                      <span>{toDecisionTime(decision) ? formatDistanceToNow(new Date(toDecisionTime(decision)), { addSuffix: true }) : 'unknown'}</span>
+                      <span className="text-right">{decision.category || 'uncategorized'}</span>
+                    </div>
+                    <div className="mt-2 text-[10px] text-text-secondary break-words">
+                      {compactPreview(decision.task)}
+                    </div>
+                  </div>
+                );
+              })}
+              {visibleDecisions.length === 0 && (
+                <div className="p-6 bg-surface-raised border border-surface-border rounded-lg text-center text-text-muted text-label-sm">
+                  No routing decisions recorded yet.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
         <div className="text-[10px] text-text-muted font-mono">
-          Dashboard data source: Convex `workEvents`. Existing service logs remain in systemd, but SAGE, DISPATCH, verifier, recovery, and Command Center actions should emit durable work events here.
+          Dashboard data source: Convex `workEvents`, `executorRuns`, and `routingDecisions`. Existing service logs remain in systemd, but SAGE, DISPATCH, verifier, recovery, and Command Center actions should emit durable records here.
         </div>
       </div>
     </div>

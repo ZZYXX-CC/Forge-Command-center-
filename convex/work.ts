@@ -649,7 +649,25 @@ export const listVerificationRuns = query({
         .order("desc")
         .take(limit);
     }
-    return await ctx.db.query("verificationRuns").order("desc").take(limit);
+    return await ctx.db.query("verificationRuns").withIndex("by_startedAt").order("desc").take(limit);
+  },
+});
+
+export const listRoutingDecisions = query({
+  args: {
+    workId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 50, 200);
+    if (args.workId) {
+      return await ctx.db
+        .query("routingDecisions")
+        .withIndex("by_workId_decidedAt", (q) => q.eq("workId", args.workId))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db.query("routingDecisions").withIndex("by_decidedAt").order("desc").take(limit);
   },
 });
 
@@ -695,5 +713,23 @@ export const recordExecutorRun = mutation({
       return existing._id;
     }
     return await ctx.db.insert("executorRuns", args);
+  },
+});
+
+export const listExecutorRuns = query({
+  args: {
+    workId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 50, 200);
+    if (args.workId) {
+      return await ctx.db
+        .query("executorRuns")
+        .withIndex("by_workId_startedAt", (q) => q.eq("workId", args.workId))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db.query("executorRuns").withIndex("by_startedAt").order("desc").take(limit);
   },
 });

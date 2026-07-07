@@ -266,7 +266,8 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_runId", ["runId"])
-    .index("by_workId_startedAt", ["workId", "startedAt"]),
+    .index("by_workId_startedAt", ["workId", "startedAt"])
+    .index("by_startedAt", ["startedAt"]),
 
   routingWhyLogs: defineTable({
     workId: v.optional(v.string()),
@@ -299,7 +300,8 @@ export default defineSchema({
   })
     .index("by_runId", ["runId"])
     .index("by_workId_startedAt", ["workId", "startedAt"])
-    .index("by_surface_startedAt", ["surface", "startedAt"]),
+    .index("by_surface_startedAt", ["surface", "startedAt"])
+    .index("by_startedAt", ["startedAt"]),
 
   workflows: defineTable({
     workflowId: v.string(),

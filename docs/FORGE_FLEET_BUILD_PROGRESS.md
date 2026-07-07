@@ -39,6 +39,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 | SAGE/KERN DISPATCH delegation skill | Done | Repo-owned `hermes/skills/devops/dispatch-delegate` is installed into live SAGE and KERN Hermes profiles via `scripts/install_hermes_dispatch_delegate_skill.sh`. |
 | Hermes gateway watchdog | Done | Repo-owned wrapper/watchdog source and LaunchAgent installer keep the active SAGE/KERN gateways launchd-managed and recover dead/bad gateway states. |
 | Gateway health in audit | Done | Mac executor `/health` reports SAGE/KERN gateway/watchdog state; `dispatch-convex-sync` writes the compact summary into `/audit`. |
+| Global run/route observability | Done | Convex exposes indexed recent `executorRuns` and `routingDecisions`; `/audit` shows recent run and route panels beside the live event stream. |
 
 ## How To Track
 
@@ -100,6 +101,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Public status after refresh-loop patch: `https://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200; `litellm`, `dispatch-service`, `dispatch-convex-sync`, `forge-sage-orchestrator`, and Command Center `nginx` are active.
 - Runtime health heartbeat: deployed `dispatch-convex-sync.service` writes `runtime_health_changed` / `runtime_health_heartbeat` events to Convex. Latest deployed loop reported `healthy`, 11 monitored services, 23 registry models, 3 unavailable models, 2 quota-blocked models, and verifier states `{passed: 2, timeout: 1}`.
 - Gateway health audit: latest `system-forge-runtime` Convex event includes `hermes_gateways` with 2 watched agents, no down agents, SAGE up, KERN warning-only for stale connected state, and watchdog loaded with 300s interval / last exit code 0.
+- Global observability: `work:listExecutorRuns` and `work:listRoutingDecisions` return recent rows from indexed Convex queries; public `/audit` shows `RUNS / ROUTES`, `Recent Executor Runs`, and `Recent Route Decisions` from the deployed bundle.
 - Stale verifier recovery: live `/verification/jobs` converted old job `2` from `running` to `timeout` with error `stale running verifier exceeded 1800s`; routing decision verification JSON was updated.
 - Convex verification audit: `work:listVerificationRuns` returns `dispatch-verification:2` as `timeout` and `dispatch-verification:1` as `passed` by `codex-cli-gpt55 / gpt-5.5`.
 - Sync attribution fix: `dispatch_convex_sync.py` now credits the passed verifier attempt instead of the first attempted verifier when syncing verification runs.
@@ -250,3 +252,11 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Redeployed `dispatch-convex-sync.service` to LXC 101.
 - Verification: executor `/health` reported SAGE `up`, KERN `warn` for stale connected state, no down gateway agents, and watchdog loaded with last exit code `0`.
 - Verification: one-shot LXC sync wrote `hermes_gateways` into the `system-forge-runtime` Convex event; public Command Center `/audit` reads the same durable event stream.
+
+## 2026-07-08 00:54 WAT - Global run/route audit visibility
+
+- Added indexed global Convex queries `work:listExecutorRuns` and `work:listRoutingDecisions`, capped at 200 rows and still filterable by `workId`.
+- Added `executorRuns.by_startedAt` and `verificationRuns.by_startedAt` indexes so global observability queries do not rely on full table scans.
+- Added Command Center hooks for recent executor runs and routing decisions.
+- Extended `/audit` with `RUNS / ROUTES` KPI plus `Recent Executor Runs` and `Recent Route Decisions` panels, so SAGE/DISPATCH activity is visible even when it is not tied to the currently selected task.
+- Verification: Convex functions deployed to `http://192.168.1.179:3210`; direct public queries returned 5 recent routing decisions and 4 executor runs; Command Center redeployed; browser smoke over `https://command-center.nuvuestudio.net/audit` showed `RUNS / ROUTES 4/30` and both new panels with no route boundary error.
