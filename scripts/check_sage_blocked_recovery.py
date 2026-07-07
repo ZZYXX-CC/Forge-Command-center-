@@ -37,11 +37,37 @@ WORK_ITEMS = {
         "blocker": "manual review required",
         "updatedAt": NOW - 3_600_000,
     },
+    "work-verified-stale": {
+        "workId": "work-verified-stale",
+        "title": "Verified stale work",
+        "status": "in_progress",
+        "priority": "medium",
+        "orchestrator": "SAGE",
+        "executor": "kern",
+        "owner": "kern",
+        "verificationStatus": "passed",
+        "verificationSummary": "All checks passed.",
+        "updatedAt": NOW - 3_600_000,
+    },
+    "work-verified-fresh": {
+        "workId": "work-verified-fresh",
+        "title": "Verified fresh work",
+        "status": "in_progress",
+        "priority": "medium",
+        "orchestrator": "SAGE",
+        "executor": "kern",
+        "owner": "kern",
+        "verificationStatus": "passed",
+        "verificationSummary": "All checks passed.",
+        "updatedAt": NOW,
+    },
 }
 EVENTS = {
     "work-temp": [],
     "work-permanent": [],
     "work-failed": [],
+    "work-verified-stale": [],
+    "work-verified-fresh": [],
 }
 EXECUTOR_RUNS = []
 ROUTING_DECISIONS = []
@@ -94,7 +120,9 @@ def main() -> int:
     S.convex_mutation = fake_mutation
     S.BLOCKED_RETRY_AFTER_MS = 30 * 60 * 1000
     S.MAX_BLOCKED_REQUEUES = 1
+    S.STALE_IN_PROGRESS_MS = 45 * 60 * 1000
     recovered = S.recover_blocked_dispatch_items()
+    closed_verified = S.reconcile_stale_verified_work()
     failed_item = {
         "workId": "work-failed",
         "title": "Failed dispatch bookkeeping",
@@ -147,9 +175,21 @@ def main() -> int:
     payload = {
         "ok": (
             recovered == [{"workId": "work-temp", "status": "requeued", "retry": 1}]
+            and closed_verified == [{
+                "workId": "work-verified-stale",
+                "status": "done",
+                "previous_status": "in_progress",
+                "verificationStatus": "passed",
+            }]
             and WORK_ITEMS["work-temp"]["status"] == "ready"
             and WORK_ITEMS["work-temp"]["blocker"] == ""
             and WORK_ITEMS["work-permanent"]["status"] == "blocked"
+            and WORK_ITEMS["work-verified-stale"]["status"] == "done"
+            and WORK_ITEMS["work-verified-stale"]["verificationStatus"] == "passed"
+            and WORK_ITEMS["work-verified-fresh"]["status"] == "in_progress"
+            and len(EVENTS["work-verified-stale"]) == 1
+            and EVENTS["work-verified-stale"][0]["type"] == "sage_verified_stale_closed"
+            and len(EVENTS["work-verified-fresh"]) == 0
             and len(EVENTS["work-temp"]) == 1
             and EVENTS["work-temp"][0]["type"] == "sage_blocked_requeued"
             and failure["status"] == "blocked"
@@ -170,13 +210,17 @@ def main() -> int:
             and ROUTING_DECISIONS[0]["workId"] == "work-success"
         ),
         "recovered": recovered,
+        "closedVerified": closed_verified,
         "failure": failure,
         "success": success,
         "temporary": WORK_ITEMS["work-temp"],
         "permanent": WORK_ITEMS["work-permanent"],
+        "verifiedStale": WORK_ITEMS["work-verified-stale"],
+        "verifiedFresh": WORK_ITEMS["work-verified-fresh"],
         "failed": WORK_ITEMS["work-failed"],
         "successful": WORK_ITEMS["work-success"],
         "events": EVENTS["work-temp"],
+        "verifiedEvents": EVENTS["work-verified-stale"],
         "failedEvents": EVENTS["work-failed"],
         "successEvents": EVENTS["work-success"],
         "executorRuns": EXECUTOR_RUNS,

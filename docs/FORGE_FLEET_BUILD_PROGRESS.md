@@ -24,6 +24,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 | Verification run audit query | Done | Convex exposes `work:listVerificationRuns` for recent verifier state, including timeout and actual passing verifier attribution. |
 | SAGE orchestration loop | Done | `forge-sage-orchestrator.service` polls ready work items and dispatches one per cycle through DISPATCH with typed intent. |
 | SAGE orchestration recovery | Done | Worker requeues stale SAGE/DISPATCH in-flight work once, blocks repeated stale work, and reconciles background verifier results into work item state. |
+| SAGE stale verified closeout | Done | Worker closes stale SAGE work already marked `passed`/`waived`, emits `sage_verified_stale_closed`, and keeps queue counts honest. |
 | Exact provider aliases | Done | Exact aliases are wired for Ollama Qwen, NIM DeepSeek/Kimi/Nemotron/Minimax, OpenRouter Nemotron/Qwen, and ZenMux Sonnet/Fable. |
 | OpenAI-compatible dry-run | Done | `POST /v1/chat/completions` supports `dry_run: true` and does not execute or enqueue verification. |
 | ZenMux provider | Degraded | Key installed securely and aliases are exposed, but real smoke calls return HTTP 402 Payment Required. DISPATCH marks both ZenMux models `quota_exhausted` and skips them until the ZenMux account/quota is fixed. |
@@ -102,6 +103,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Runtime health heartbeat: deployed `dispatch-convex-sync.service` writes `runtime_health_changed` / `runtime_health_heartbeat` events to Convex. Latest deployed loop reported `healthy`, 11 monitored services, 23 registry models, 3 unavailable models, 2 quota-blocked models, and verifier states `{passed: 2, timeout: 1}`.
 - Gateway health audit: latest `system-forge-runtime` Convex event includes `hermes_gateways` with 2 watched agents, no down agents, SAGE up, KERN warning-only for stale connected state, and watchdog loaded with 300s interval / last exit code 0.
 - Global observability: `work:listExecutorRuns` and `work:listRoutingDecisions` return recent rows from indexed Convex queries; public `/audit` shows `RUNS / ROUTES`, `Recent Executor Runs`, and `Recent Route Decisions` from the deployed bundle.
+- SAGE stale verified closeout: live legacy item `forge-phase-b-convex` moved from stale `in_progress` to `done` after SAGE saw `verificationStatus=passed`; `/audit` recorded `sage_verified_stale_closed`, and SAGE heartbeat dropped to 1 in-progress item, the runtime monitor.
 - Stale verifier recovery: live `/verification/jobs` converted old job `2` from `running` to `timeout` with error `stale running verifier exceeded 1800s`; routing decision verification JSON was updated.
 - Convex verification audit: `work:listVerificationRuns` returns `dispatch-verification:2` as `timeout` and `dispatch-verification:1` as `passed` by `codex-cli-gpt55 / gpt-5.5`.
 - Sync attribution fix: `dispatch_convex_sync.py` now credits the passed verifier attempt instead of the first attempted verifier when syncing verification runs.
@@ -260,3 +262,12 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Added Command Center hooks for recent executor runs and routing decisions.
 - Extended `/audit` with `RUNS / ROUTES` KPI plus `Recent Executor Runs` and `Recent Route Decisions` panels, so SAGE/DISPATCH activity is visible even when it is not tied to the currently selected task.
 - Verification: Convex functions deployed to `http://192.168.1.179:3210`; direct public queries returned 5 recent routing decisions and 4 executor runs; Command Center redeployed; browser smoke over `https://command-center.nuvuestudio.net/audit` showed `RUNS / ROUTES 4/30` and both new panels with no route boundary error.
+
+## 2026-07-08 00:58 WAT - SAGE stale verified closeout
+
+- Added a conservative SAGE maintenance pass for stale work items that are still `in_progress`/`review` but already have `verificationStatus=passed` or `waived`.
+- The closeout skips the runtime monitor, fresh items, blocked items, non-SAGE items, and anything without terminal verification.
+- Closeout writes a durable `sage_verified_stale_closed` event with previous status, verification status, and stale age.
+- SAGE heartbeat metadata now includes `closed_verified_count`.
+- Regression coverage added to `scripts/check_sage_blocked_recovery.py` for stale verified closeout and fresh verified skip.
+- Verification: SAGE redeployed to LXC 101; live item `forge-phase-b-convex` was closed to `done`; Convex recorded `sage_verified_stale_closed`; follow-up heartbeat reported `0 ready, 1 in progress, 0 in review, 1 blocked`.

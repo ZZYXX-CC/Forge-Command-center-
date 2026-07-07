@@ -197,6 +197,7 @@ def maybe_emit_sage_heartbeat(maintenance: dict[str, Any], processed: list[dict[
         "blocked": queue_count("blocked"),
         "processed_count": len(processed),
         "recovered_count": len(maintenance.get("recovered") or []),
+        "closed_verified_count": len(maintenance.get("closed_verified") or []),
         "verified_count": len(maintenance.get("verified") or []),
         "interval_ms": SAGE_HEARTBEAT_INTERVAL_MS,
     }
@@ -278,6 +279,63 @@ def recover_stale_in_progress() -> list[dict[str, Any]]:
             })
             recovered.append({"workId": work_id, "status": "blocked", "retries": retries})
     return recovered
+
+
+def reconcile_stale_verified_work() -> list[dict[str, Any]]:
+    now = int(time.time() * 1000)
+    stale_before = now - STALE_IN_PROGRESS_MS
+    reconciled: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
+    for status in ("in_progress", "review"):
+        candidates.extend(convex_query("work:listWorkItems", {"status": status, "limit": RECOVERY_SCAN_LIMIT}) or [])
+
+    for item in candidates:
+        work_id = item.get("workId")
+        if not work_id or work_id == RUNTIME_WORK_ID:
+            continue
+        if str(item.get("orchestrator") or "").upper() != "SAGE":
+            continue
+        if item.get("verificationStatus") not in {"passed", "waived"}:
+            continue
+        if item.get("blocker"):
+            continue
+        if int(item.get("updatedAt") or now) > stale_before:
+            continue
+        detail = convex_query("work:getWorkItem", {"workId": work_id}) or {}
+        current = detail.get("item") or {}
+        if current.get("status") not in {"in_progress", "review"}:
+            continue
+        if current.get("verificationStatus") not in {"passed", "waived"}:
+            continue
+        if current.get("blocker"):
+            continue
+        if event_count(detail, "sage_verified_stale_closed") > 0:
+            continue
+        summary = current.get("verificationSummary") or "SAGE closed stale verified work item."
+        convex_mutation("work:updateWorkItem", {
+            "workId": work_id,
+            "status": "done",
+            "verificationStatus": current.get("verificationStatus"),
+            "verificationSummary": summary,
+        })
+        convex_mutation("work:addWorkEvent", {
+            "workId": work_id,
+            "type": "sage_verified_stale_closed",
+            "actor": "SAGE",
+            "message": "Closed stale work item because verification was already complete.",
+            "metadata": json.dumps({
+                "previous_status": current.get("status"),
+                "verificationStatus": current.get("verificationStatus"),
+                "stale_ms": now - int(current.get("updatedAt") or now),
+            }),
+        })
+        reconciled.append({
+            "workId": work_id,
+            "status": "done",
+            "previous_status": current.get("status"),
+            "verificationStatus": current.get("verificationStatus"),
+        })
+    return reconciled
 
 
 def recover_blocked_dispatch_items() -> list[dict[str, Any]]:
@@ -587,6 +645,7 @@ def record_sage_dispatch_failure(
 def tick() -> list[dict[str, Any]]:
     maintenance = {
         "recovered": recover_stale_in_progress(),
+        "closed_verified": reconcile_stale_verified_work(),
         "blocked_requeued": recover_blocked_dispatch_items(),
         "verified": reconcile_verification_results(),
     }
@@ -601,7 +660,7 @@ def tick() -> list[dict[str, Any]]:
     heartbeat = maybe_emit_sage_heartbeat(maintenance, results)
     if heartbeat:
         results.insert(0, {"heartbeat": heartbeat})
-    if maintenance["recovered"] or maintenance["blocked_requeued"] or maintenance["verified"]:
+    if maintenance["recovered"] or maintenance["closed_verified"] or maintenance["blocked_requeued"] or maintenance["verified"]:
         results.insert(0, {"maintenance": maintenance})
     return results
 
