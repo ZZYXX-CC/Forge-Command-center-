@@ -17,6 +17,8 @@ STALE_IN_PROGRESS_MS = int(os.environ.get("STALE_IN_PROGRESS_MS", str(45 * 60 * 
 MAX_STALE_REQUEUES = int(os.environ.get("MAX_STALE_REQUEUES", "1"))
 RECOVERY_SCAN_LIMIT = int(os.environ.get("RECOVERY_SCAN_LIMIT", "25"))
 SAGE_HEARTBEAT_INTERVAL_MS = int(os.environ.get("SAGE_HEARTBEAT_INTERVAL_MS", str(15 * 60 * 1000)))
+BLOCKED_RETRY_AFTER_MS = int(os.environ.get("BLOCKED_RETRY_AFTER_MS", str(30 * 60 * 1000)))
+MAX_BLOCKED_REQUEUES = int(os.environ.get("MAX_BLOCKED_REQUEUES", "1"))
 RUNTIME_WORK_ID = os.environ.get("RUNTIME_WORK_ID", "system-forge-runtime")
 LAST_HEARTBEAT_MS = 0
 
@@ -139,6 +141,24 @@ def event_count(detail: dict[str, Any], event_type: str) -> int:
     return sum(1 for event in detail.get("events") or [] if event.get("type") == event_type)
 
 
+def is_temporary_blocker(value: Any) -> bool:
+    text = str(value or "").lower()
+    return any(marker in text for marker in (
+        "timed out",
+        "timeout",
+        "rate limit",
+        "rate_limited",
+        "quota",
+        "weekly limit",
+        "usage limit",
+        "circuit_open",
+        "circuit open",
+        "temporarily unavailable",
+        "verifier_unavailable",
+        "no_available_surface",
+    ))
+
+
 def ensure_runtime_work_item() -> None:
     convex_mutation("work:upsertWorkItem", {
         "workId": RUNTIME_WORK_ID,
@@ -256,6 +276,53 @@ def recover_stale_in_progress() -> list[dict[str, Any]]:
                 "metadata": json.dumps({"stale_ms": now - int(current.get("updatedAt") or now), "retries": retries}),
             })
             recovered.append({"workId": work_id, "status": "blocked", "retries": retries})
+    return recovered
+
+
+def recover_blocked_dispatch_items() -> list[dict[str, Any]]:
+    now = int(time.time() * 1000)
+    retry_before = now - BLOCKED_RETRY_AFTER_MS
+    rows = convex_query("work:listWorkItems", {"status": "blocked", "limit": RECOVERY_SCAN_LIMIT}) or []
+    recovered: list[dict[str, Any]] = []
+    for item in rows:
+        work_id = item.get("workId")
+        if not work_id:
+            continue
+        if str(item.get("orchestrator") or "").upper() != "SAGE":
+            continue
+        if str(item.get("executor") or "").upper() != "DISPATCH":
+            continue
+        if int(item.get("updatedAt") or now) > retry_before:
+            continue
+        if not is_temporary_blocker(item.get("blocker")):
+            continue
+        detail = convex_query("work:getWorkItem", {"workId": work_id}) or {}
+        current = detail.get("item") or {}
+        if current.get("status") != "blocked":
+            continue
+        retries = event_count(detail, "sage_blocked_requeued")
+        if retries >= MAX_BLOCKED_REQUEUES:
+            continue
+        convex_mutation("work:updateWorkItem", {
+            "workId": work_id,
+            "status": "ready",
+            "blocker": "",
+            "verificationStatus": "not_started",
+            "verificationSummary": "SAGE requeued this item after a temporary DISPATCH blocker cooldown.",
+        })
+        convex_mutation("work:addWorkEvent", {
+            "workId": work_id,
+            "type": "sage_blocked_requeued",
+            "actor": "SAGE",
+            "message": "Requeued blocked item after temporary DISPATCH blocker cooldown.",
+            "metadata": json.dumps({
+                "blocker": current.get("blocker"),
+                "retry": retries + 1,
+                "cooldown_ms": BLOCKED_RETRY_AFTER_MS,
+                "blocked_ms": now - int(current.get("updatedAt") or now),
+            }),
+        })
+        recovered.append({"workId": work_id, "status": "requeued", "retry": retries + 1})
     return recovered
 
 
@@ -449,6 +516,7 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
 def tick() -> list[dict[str, Any]]:
     maintenance = {
         "recovered": recover_stale_in_progress(),
+        "blocked_requeued": recover_blocked_dispatch_items(),
         "verified": reconcile_verification_results(),
     }
     ready = convex_query("work:listWorkItems", {"status": "ready", "limit": MAX_PER_TICK}) or []
@@ -476,7 +544,7 @@ def tick() -> list[dict[str, Any]]:
     heartbeat = maybe_emit_sage_heartbeat(maintenance, results)
     if heartbeat:
         results.insert(0, {"heartbeat": heartbeat})
-    if maintenance["recovered"] or maintenance["verified"]:
+    if maintenance["recovered"] or maintenance["blocked_requeued"] or maintenance["verified"]:
         results.insert(0, {"maintenance": maintenance})
     return results
 

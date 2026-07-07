@@ -35,6 +35,8 @@ Environment=STALE_IN_PROGRESS_MS=2700000
 Environment=MAX_STALE_REQUEUES=1
 Environment=RECOVERY_SCAN_LIMIT=25
 Environment=SAGE_HEARTBEAT_INTERVAL_MS=900000
+Environment=BLOCKED_RETRY_AFTER_MS=1800000
+Environment=MAX_BLOCKED_REQUEUES=1
 ExecStart=/usr/bin/python3 $SERVICE_DIR/sage_orchestrator.py
 Restart=always
 RestartSec=15

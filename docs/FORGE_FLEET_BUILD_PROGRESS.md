@@ -52,6 +52,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Exact model alias check: `python3 scripts/check_dispatch_model_aliases.py`
 - Quota recovery route check: `python3 scripts/check_dispatch_recovery_route.py`
 - Subscription limit route check: `python3 scripts/check_dispatch_subscription_limit_route.py`
+- SAGE blocked recovery check: `python3 scripts/check_sage_blocked_recovery.py`
 - Bounded delegation dry-run: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a routine implementation route."`
 - Source hygiene: `python3 scripts/check_forge_source_hygiene.py`
 - Hermes dispatch skill install: `bash scripts/install_hermes_dispatch_delegate_skill.sh sage kern`
@@ -191,6 +192,14 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Runtime state now parses reset timestamps from stored CLI errors, so previously remembered limit failures are treated as `quota_exhausted` even if the original failure was recorded before this parser existed.
 - Added `scripts/check_dispatch_subscription_limit_route.py`, a live LXC regression check that seeds the Claude weekly-limit wording and verifies DISPATCH skips Claude Sonnet until reset.
 - Verification: DISPATCH redeployed through Proxmox; the new check passed; planning dry-run skipped `claude-code / claude-sonnet-5` as `quota_exhausted` and selected `codex-cli-gpt55 / gpt-5.5`; `/registry/status` reports Claude Sonnet `health=quota_exhausted`, `available=false`, and parsed `quota_reset_at`.
+
+## 2026-07-08 00:26 WAT - Temporary blocked work recovery
+
+- Added SAGE recovery for blocked SAGE/DISPATCH work items whose blocker is temporary availability or execution wording such as timeout, rate limit, quota, circuit open, verifier unavailable, or no available surface.
+- Recovery is conservative: only SAGE-orchestrated DISPATCH work, only after `BLOCKED_RETRY_AFTER_MS`, and capped by `MAX_BLOCKED_REQUEUES`.
+- Recovered items are moved back to `ready`, blocker is cleared, verification is reset to `not_started`, and a durable `sage_blocked_requeued` event is written for `/audit`.
+- Added `scripts/check_sage_blocked_recovery.py`, a fake-Convex regression check proving temporary blockers requeue while permanent manual blockers stay blocked.
+- Verification: SAGE orchestrator redeployed with `BLOCKED_RETRY_AFTER_MS=1800000` and `MAX_BLOCKED_REQUEUES=1`; live blocked smoke item `work-1783438736624` was requeued once, retried through DISPATCH, timed out again, and returned to `blocked` without entering a retry loop.
 
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 
