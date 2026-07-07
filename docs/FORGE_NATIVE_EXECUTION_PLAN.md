@@ -166,11 +166,12 @@ These are the FORGE-native roadmap. DISPATCH build phases 0–7 (in `DISPATCH_BU
 | Router + LiteLLM + executor live | Done | `dispatch/`, LXC, Mac |
 | `dispatch_delegate.py` CLI | Done | `dispatch/dispatch_delegate.py` |
 | `cwd`/`repo` forwarding | Done | `dispatch/executor/executor.py`, router, service |
-| Hermes `dispatch-delegate` skill (KERN) | Done | `~/.hermes/profiles/kern/skills/devops/dispatch-delegate/SKILL.md` |
-| Copy orchestration/delegation visibility to SAGE | **Next** | Hermes profile skills dirs |
-| Add `hermes-kern-gpt55` executor surface | **Next** | `dispatch/executor/executor.py`, router/service config |
-| Patch Codex CLI surface for writable `gpt-5.5` execution | **Next** | `dispatch/executor/executor.py` |
-| Install Mac executor LaunchAgent | **Next** | `~/Library/LaunchAgents/ai.forge.dispatch-executor.plist` |
+| Hermes `dispatch-delegate` skill (KERN) | Done | `/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes/profiles/kern/skills/devops/dispatch-delegate/SKILL.md` |
+| Copy orchestration/delegation visibility to SAGE | Done | `/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes/profiles/sage/skills/devops/dispatch-delegate/SKILL.md` |
+| Repo-owned dispatch-delegate skill installer | Done | `hermes/skills/devops/dispatch-delegate/`, `scripts/install_hermes_dispatch_delegate_skill.sh` |
+| Add `hermes-kern-gpt55` executor surface | Done | `dispatch/executor/executor.py`, router/service config |
+| Patch Codex CLI surface for writable `gpt-5.5` execution | Done | `dispatch/executor/executor.py` |
+| Install Mac executor LaunchAgent | Done | `dispatch/executor/ai.forge.dispatch-executor.plist`, `scripts/deploy_mac_executor_local.sh` |
 | Re-login Claude/Codex CLIs if auth smoke fails | **As needed** | Mac mini |
 
 **Done when:** SAGE can create/assign work, KERN can execute as a Hermes-GPT5.5 surface or route to Codex/Claude/Cursor, and the result lands in GitHub with Convex logging the execution trail.

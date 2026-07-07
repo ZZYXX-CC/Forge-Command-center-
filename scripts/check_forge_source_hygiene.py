@@ -28,6 +28,7 @@ REQUIRED_SOURCE = [
     "scripts/deploy_dispatch_sync_service.sh",
     "scripts/deploy_litellm_config_via_proxmox.sh",
     "scripts/deploy_mac_executor_local.sh",
+    "scripts/install_hermes_dispatch_delegate_skill.sh",
     "scripts/deploy_sage_orchestrator_service.sh",
     "scripts/deploy_telegram_intake_service.sh",
     "scripts/check_dispatch_model_aliases.py",
@@ -37,6 +38,12 @@ REQUIRED_SOURCE = [
     "src/pages/Tasks.tsx",
     "docs/FORGE_FLEET_BUILD_PROGRESS.md",
     "docs/ZENMUX_PROVIDER_SETUP.md",
+    "hermes/skills/devops/dispatch-delegate/SKILL.md",
+    "hermes/skills/devops/dispatch-delegate/references/codebase-memory-mcp.md",
+    "hermes/skills/devops/dispatch-delegate/references/cwd-unlock.md",
+    "hermes/skills/devops/dispatch-delegate/references/forge-executor-surfaces.md",
+    "hermes/skills/devops/dispatch-delegate/references/forge-native-execution.md",
+    "hermes/skills/devops/dispatch-delegate/references/mac-executor-gpt55-surfaces.md",
 ]
 
 ALLOWED_PLACEHOLDERS = {

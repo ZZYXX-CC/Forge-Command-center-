@@ -1,6 +1,6 @@
 # FORGE Fleet Build Progress
 
-Last updated: 2026-07-07 23:44 WAT
+Last updated: 2026-07-07 23:49 WAT
 
 Public dashboard: http://command-center.nuvuestudio.net/
 
@@ -36,6 +36,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 | Synthetic route self-test | Done | Work items now support `dryRun`; `/tasks` can create a route self-test item, and SAGE passes `dry_run: true` through DISPATCH while still recording events, executorRuns, and routingDecisions. |
 | Source hygiene gate | Done | `scripts/check_forge_source_hygiene.py` verifies required deployable source exists, local artifacts are ignored, and raw API/bot token patterns are absent. |
 | Mac executor self-healing deploy | Done | `scripts/deploy_mac_executor_local.sh` installs the LaunchAgent plist, bootstraps/kickstarts launchd, validates health, and keeps `:4100` alive with `KeepAlive`. |
+| SAGE/KERN DISPATCH delegation skill | Done | Repo-owned `hermes/skills/devops/dispatch-delegate` is installed into live SAGE and KERN Hermes profiles via `scripts/install_hermes_dispatch_delegate_skill.sh`. |
 
 ## How To Track
 
@@ -50,6 +51,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Quota recovery route check: `python3 scripts/check_dispatch_recovery_route.py`
 - Bounded delegation dry-run: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a routine implementation route."`
 - Source hygiene: `python3 scripts/check_forge_source_hygiene.py`
+- Hermes dispatch skill install: `bash scripts/install_hermes_dispatch_delegate_skill.sh sage kern`
 - ZenMux setup: `docs/ZENMUX_PROVIDER_SETUP.md`
 - This file: update after each build phase.
 
@@ -169,3 +171,11 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Added the LaunchAgent plist to `scripts/check_forge_source_hygiene.py` required source so a restored/new Mac setup cannot silently miss executor keepalive.
 - Verification: `./scripts/deploy_mac_executor_local.sh` returned plist `OK` and executor health with surfaces `claude-code`, `codex`, `codex-cli-gpt55`, `cursor`, `gemini-cli`, `hermes-kern-gpt55`, `kern-hermes-gpt55`, and `hermes-vael`.
 - Verification: `launchctl print gui/$(id -u)/ai.forge.dispatch-executor` showed `state = running`; `python3 dispatch/dispatch_status.py` showed LiteLLM, DISPATCH, and Executor UP.
+
+## 2026-07-07 23:49 WAT - SAGE/KERN DISPATCH delegation skill
+
+- Added repo-owned Hermes skill source at `hermes/skills/devops/dispatch-delegate/`, copied from the proven KERN profile skill and including DISPATCH delegation references.
+- Added `scripts/install_hermes_dispatch_delegate_skill.sh` so SAGE/KERN profile-local skills can be restored from Git after backup/restore or SSD migration.
+- Installed the skill into live SAGE and KERN profiles under `/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes/profiles/{sage,kern}/skills/devops/dispatch-delegate/`.
+- Extended `scripts/check_forge_source_hygiene.py` so the delegation skill and installer are required source artifacts.
+- Verification: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a SAGE delegation route for a small code maintenance task. Return one sentence."` returned `status=would_execute(dry_run)` and selected `ollama / qwen2.5-coder:14b`.
