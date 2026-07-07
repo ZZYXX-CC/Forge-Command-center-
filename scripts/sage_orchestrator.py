@@ -16,6 +16,9 @@ MAX_PER_TICK = int(os.environ.get("MAX_PER_TICK", "1"))
 STALE_IN_PROGRESS_MS = int(os.environ.get("STALE_IN_PROGRESS_MS", str(45 * 60 * 1000)))
 MAX_STALE_REQUEUES = int(os.environ.get("MAX_STALE_REQUEUES", "1"))
 RECOVERY_SCAN_LIMIT = int(os.environ.get("RECOVERY_SCAN_LIMIT", "25"))
+SAGE_HEARTBEAT_INTERVAL_MS = int(os.environ.get("SAGE_HEARTBEAT_INTERVAL_MS", str(15 * 60 * 1000)))
+RUNTIME_WORK_ID = os.environ.get("RUNTIME_WORK_ID", "system-forge-runtime")
+LAST_HEARTBEAT_MS = 0
 
 
 def clean_args(value: Any) -> Any:
@@ -134,6 +137,68 @@ def extract_output(response: dict[str, Any]) -> str:
 
 def event_count(detail: dict[str, Any], event_type: str) -> int:
     return sum(1 for event in detail.get("events") or [] if event.get("type") == event_type)
+
+
+def ensure_runtime_work_item() -> None:
+    convex_mutation("work:upsertWorkItem", {
+        "workId": RUNTIME_WORK_ID,
+        "title": "FORGE runtime health monitor",
+        "summary": (
+            "Durable audit stream for service health, sync worker state, SAGE orchestration, "
+            "verifier queue, registry availability, and runtime transitions."
+        ),
+        "status": "in_progress",
+        "priority": "high",
+        "orchestrator": "SYSTEM",
+        "owner": "kern",
+        "executor": "dispatch-convex-sync",
+        "surface": "convex",
+        "verificationStatus": "waived",
+        "verificationSummary": "Runtime heartbeat monitor.",
+    })
+
+
+def queue_count(status: str) -> int:
+    rows = convex_query("work:listWorkItems", {"status": status, "limit": 100}) or []
+    return len(rows)
+
+
+def maybe_emit_sage_heartbeat(maintenance: dict[str, Any], processed: list[dict[str, Any]]) -> dict[str, Any] | None:
+    global LAST_HEARTBEAT_MS
+    now = int(time.time() * 1000)
+    if LAST_HEARTBEAT_MS and SAGE_HEARTBEAT_INTERVAL_MS > 0 and now - LAST_HEARTBEAT_MS < SAGE_HEARTBEAT_INTERVAL_MS:
+        return None
+
+    summary = {
+        "ready": queue_count("ready"),
+        "in_progress": queue_count("in_progress"),
+        "review": queue_count("review"),
+        "blocked": queue_count("blocked"),
+        "processed_count": len(processed),
+        "recovered_count": len(maintenance.get("recovered") or []),
+        "verified_count": len(maintenance.get("verified") or []),
+        "interval_ms": SAGE_HEARTBEAT_INTERVAL_MS,
+    }
+    ensure_runtime_work_item()
+    convex_mutation("work:addWorkEvent", {
+        "workId": RUNTIME_WORK_ID,
+        "type": "sage_orchestrator_heartbeat",
+        "actor": "SAGE",
+        "message": (
+            "SAGE orchestrator heartbeat: "
+            f"{summary['ready']} ready, {summary['in_progress']} in progress, "
+            f"{summary['review']} in review, {summary['blocked']} blocked."
+        ),
+        "metadata": json.dumps({
+            "summary": summary,
+            "maintenance": maintenance,
+            "processed": processed[:10],
+            "dispatch_url": DISPATCH_URL,
+            "convex_url": CONVEX_URL,
+        }),
+    })
+    LAST_HEARTBEAT_MS = now
+    return summary
 
 
 def recover_stale_in_progress() -> list[dict[str, Any]]:
@@ -408,6 +473,9 @@ def tick() -> list[dict[str, Any]]:
                     "message": str(exc)[:1000],
                 })
             results.append({"workId": work_id, "status": "blocked", "error": str(exc)})
+    heartbeat = maybe_emit_sage_heartbeat(maintenance, results)
+    if heartbeat:
+        results.insert(0, {"heartbeat": heartbeat})
     if maintenance["recovered"] or maintenance["verified"]:
         results.insert(0, {"maintenance": maintenance})
     return results

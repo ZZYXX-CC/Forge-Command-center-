@@ -31,7 +31,7 @@ Environment=DISPATCH_URL=http://192.168.1.178:4001
 Environment=CONVEX_URL=http://192.168.1.179:3210
 Environment=LITELLM_URL=http://192.168.1.178:4000
 Environment=EXECUTOR_URL=http://192.168.1.170:4100
-Environment=COMMAND_CENTER_URL=http://command-center.nuvuestudio.net
+Environment=COMMAND_CENTER_URL=https://command-center.nuvuestudio.net
 Environment=SYNC_INTERVAL_MS=60000
 Environment=RUNTIME_WORK_ID=system-forge-runtime
 Environment=RUNTIME_STATE_FILE=$SERVICE_DIR/runtime_health_state.json

@@ -176,6 +176,14 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Updated Command Center metadata/docs to prefer `https://command-center.nuvuestudio.net/`.
 - Verification: production build passed, source hygiene passed, Command Center redeployed to LXC 104, public health returned `ok`, and the live HTML references the fresh bundle `assets/index-BcrWazIP.js`.
 
+## 2026-07-08 00:15 WAT - SAGE heartbeat into audit stream
+
+- Added a SAGE orchestrator heartbeat event written to the durable `system-forge-runtime` audit item every 15 minutes.
+- Heartbeat metadata includes ready, in-progress, review, and blocked queue counts plus recovered/verified maintenance counts and recently processed items.
+- Added `SAGE_HEARTBEAT_INTERVAL_MS` to the SAGE orchestrator service deploy wrapper.
+- Updated the runtime sync worker and service deploy wrapper to probe Command Center through `https://command-center.nuvuestudio.net`.
+- Verification: local one-shot with `SAGE_HEARTBEAT_INTERVAL_MS=0` wrote `sage_orchestrator_heartbeat` to Convex with queue counts visible in `/audit`.
+
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 
 - Hardened `scripts/deploy_mac_executor_local.sh` so it installs both the live executor source and `dispatch/executor/ai.forge.dispatch-executor.plist`.
