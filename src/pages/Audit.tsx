@@ -14,7 +14,7 @@ interface AuditProps {
 type EventLevel = LogEntry['level'];
 
 const eventLevel = (event: WorkRegistryEvent): EventLevel => {
-  const text = `${event.type} ${event.message}`.toLowerCase();
+  const text = `${event.type ?? ''} ${event.message ?? ''}`.toLowerCase();
   if (text.includes('failed') || text.includes('blocked') || text.includes('error') || text.includes('timeout')) return 'error';
   if (text.includes('cancelled') || text.includes('requeued') || text.includes('review')) return 'warn';
   if (text.includes('completed') || text.includes('passed') || text.includes('done')) return 'success';
@@ -25,22 +25,39 @@ const eventLevel = (event: WorkRegistryEvent): EventLevel => {
 const sourceFor = (event: WorkRegistryEvent): string => {
   const actor = event.actor || 'SYSTEM';
   if (actor.toUpperCase() === 'SAGE') return 'SAGE';
-  if (event.type.startsWith('sage_')) return 'SAGE';
-  if (event.type.includes('dispatch')) return 'DISPATCH';
-  if (event.type.includes('workflow')) return 'WORKFLOW';
+  if ((event.type ?? '').startsWith('sage_')) return 'SAGE';
+  if ((event.type ?? '').includes('dispatch')) return 'DISPATCH';
+  if ((event.type ?? '').includes('workflow')) return 'WORKFLOW';
   return actor.toUpperCase().slice(0, 14);
 };
 
-const toLogEntry = (event: WorkRegistryEvent): LogEntry => ({
-  id: event._id,
-  timestamp: new Date(event.occurredAt).toLocaleTimeString([], {
+const toEventTime = (event: WorkRegistryEvent): number => {
+  const value = Number(event.occurredAt);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const formatEventTime = (event: WorkRegistryEvent): string => {
+  const timestamp = toEventTime(event);
+  if (!timestamp) return 'unknown';
+  return new Date(timestamp).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-  }),
+  });
+};
+
+const formatRelativeEventTime = (event: WorkRegistryEvent): string => {
+  const timestamp = toEventTime(event);
+  if (!timestamp) return 'unknown';
+  return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+};
+
+const toLogEntry = (event: WorkRegistryEvent): LogEntry => ({
+  id: event._id || `${event.workId ?? 'event'}-${toEventTime(event)}-${event.type ?? 'unknown'}`,
+  timestamp: formatEventTime(event),
   level: eventLevel(event),
   source: sourceFor(event),
-  message: `${event.workId} | ${event.type} | ${event.message}`,
+  message: `${event.workId ?? 'unknown-work'} | ${event.type ?? 'unknown'} | ${event.message ?? 'No message recorded.'}`,
 });
 
 const parseMetadata = (value?: string): Record<string, unknown> | null => {
@@ -78,7 +95,7 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
   }, [events, query]);
 
   const streamEvents = useMemo(
-    () => filteredEvents.filter((event) => !streamClearedAt || event.occurredAt > streamClearedAt),
+    () => filteredEvents.filter((event) => !streamClearedAt || toEventTime(event) > streamClearedAt),
     [filteredEvents, streamClearedAt],
   );
   const logEntries = useMemo(() => streamEvents.slice().reverse().map(toLogEntry), [streamEvents]);
@@ -116,7 +133,7 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
             { label: 'Completed', value: successes, tone: 'healthy', icon: CheckCircle2 },
             {
               label: 'Latest',
-              value: latest ? formatDistanceToNow(new Date(latest.occurredAt), { addSuffix: true }) : 'none',
+              value: latest ? formatRelativeEventTime(latest) : 'none',
               tone: 'neutral',
               icon: Clock,
             },
@@ -163,11 +180,11 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
                 const level = eventLevel(event);
                 const metadata = parseMetadata(event.metadata);
                 return (
-                  <div key={event._id} className="p-4 bg-surface-raised border border-surface-border rounded-lg space-y-3">
+                  <div key={event._id || `${event.workId ?? 'event'}-${toEventTime(event)}-${event.type ?? 'unknown'}`} className="p-4 bg-surface-raised border border-surface-border rounded-lg space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{event.workId}</div>
-                        <div className="text-label-sm font-bold text-text-primary mt-1 break-words">{event.message}</div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{event.workId ?? 'unknown-work'}</div>
+                        <div className="text-label-sm font-bold text-text-primary mt-1 break-words">{event.message ?? 'No message recorded.'}</div>
                       </div>
                       <span className={cn(
                         'px-2 py-1 rounded text-[9px] font-bold uppercase shrink-0',
@@ -180,9 +197,9 @@ export const Audit: React.FC<AuditProps> = ({ data }) => {
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-[10px] font-mono text-text-muted">
-                      <span>{event.actor}</span>
-                      <span className="text-right">{formatDistanceToNow(new Date(event.occurredAt), { addSuffix: true })}</span>
-                      <span className="col-span-2 text-emerald-accent">{event.type}</span>
+                      <span>{event.actor ?? 'SYSTEM'}</span>
+                      <span className="text-right">{formatRelativeEventTime(event)}</span>
+                      <span className="col-span-2 text-emerald-accent">{event.type ?? 'unknown'}</span>
                     </div>
                     {metadata && (
                       <pre className="max-h-28 overflow-auto rounded bg-surface-base border border-surface-border p-2 text-[10px] text-text-secondary whitespace-pre-wrap">

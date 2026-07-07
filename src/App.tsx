@@ -29,12 +29,19 @@ import { PrimitivesPage } from './pages/ui/PrimitivesPage';
 import { FeedbackPage } from './pages/ui/FeedbackPage';
 import { DataDisplayPage } from './pages/ui/DataDisplayPage';
 import { LayoutPage } from './pages/ui/LayoutPage';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 import { generateMockOverviewData } from './lib/mockData';
 import { convexClient } from './lib/convex';
 
 const queryClient = new QueryClient();
+
+const withRouteBoundary = (routeName: string, element: React.ReactNode) => (
+  <RouteErrorBoundary routeName={routeName} key={routeName}>
+    {element}
+  </RouteErrorBoundary>
+);
 
 function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -244,28 +251,28 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<MorningBrief data={data} />} />
-            <Route path="/trading" element={<TradingOps />} />
-            <Route path="/p2p" element={<TradingP2P />} />
-            <Route path="/sites" element={<WebOps />} />
-            <Route path="/money" element={<Money data={data} />} />
-            <Route path="/finance" element={<Finance data={data} />} />
-            <Route path="/incidents" element={<Incidents data={data} />} />
-            <Route path="/deployments" element={<Deployments data={data} />} />
-            <Route path="/audit" element={<Audit data={data} />} />
-            <Route path="/messaging" element={<Messaging data={data} />} />
-            <Route path="/tasks" element={<Tasks data={data} />} />
-            <Route path="/clients" element={<Clients data={data} />} />
-            <Route path="/bots" element={<BotTeam />} />
-            <Route path="/dispatch" element={<Dispatch />} />
-            <Route path="/content" element={<Content data={data} />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/library" element={<ComponentLibrary />} />
-            <Route path="/ui/neural-map" element={<NeuralMapPage />} />
-            <Route path="/ui/primitives" element={<PrimitivesPage />} />
-            <Route path="/ui/feedback" element={<FeedbackPage />} />
-            <Route path="/ui/data-display" element={<DataDisplayPage />} />
-            <Route path="/ui/layout" element={<LayoutPage />} />
+            <Route path="/" element={withRouteBoundary('Morning Brief', <MorningBrief data={data} />)} />
+            <Route path="/trading" element={withRouteBoundary('Trading Ops', <TradingOps />)} />
+            <Route path="/p2p" element={withRouteBoundary('P2P Markets', <TradingP2P />)} />
+            <Route path="/sites" element={withRouteBoundary('Sites', <WebOps />)} />
+            <Route path="/money" element={withRouteBoundary('Money', <Money data={data} />)} />
+            <Route path="/finance" element={withRouteBoundary('Finance', <Finance data={data} />)} />
+            <Route path="/incidents" element={withRouteBoundary('Incidents', <Incidents data={data} />)} />
+            <Route path="/deployments" element={withRouteBoundary('Deployments', <Deployments data={data} />)} />
+            <Route path="/audit" element={withRouteBoundary('Audit', <Audit data={data} />)} />
+            <Route path="/messaging" element={withRouteBoundary('Messaging', <Messaging data={data} />)} />
+            <Route path="/tasks" element={withRouteBoundary('Tasks', <Tasks data={data} />)} />
+            <Route path="/clients" element={withRouteBoundary('Clients', <Clients data={data} />)} />
+            <Route path="/bots" element={withRouteBoundary('Bot Team', <BotTeam />)} />
+            <Route path="/dispatch" element={withRouteBoundary('Dispatch', <Dispatch />)} />
+            <Route path="/content" element={withRouteBoundary('Content', <Content data={data} />)} />
+            <Route path="/settings" element={withRouteBoundary('Settings', <Settings />)} />
+            <Route path="/library" element={withRouteBoundary('Component Library', <ComponentLibrary />)} />
+            <Route path="/ui/neural-map" element={withRouteBoundary('Neural Map', <NeuralMapPage />)} />
+            <Route path="/ui/primitives" element={withRouteBoundary('Primitives', <PrimitivesPage />)} />
+            <Route path="/ui/feedback" element={withRouteBoundary('Feedback', <FeedbackPage />)} />
+            <Route path="/ui/data-display" element={withRouteBoundary('Data Display', <DataDisplayPage />)} />
+            <Route path="/ui/layout" element={withRouteBoundary('Layout', <LayoutPage />)} />
           </Routes>
         </div>
       </div>
