@@ -51,6 +51,7 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - SAGE orchestrator service: `ssh forge-node-01 "pct exec 101 -- systemctl status forge-sage-orchestrator --no-pager"`
 - Exact model alias check: `python3 scripts/check_dispatch_model_aliases.py`
 - Quota recovery route check: `python3 scripts/check_dispatch_recovery_route.py`
+- Subscription limit route check: `python3 scripts/check_dispatch_subscription_limit_route.py`
 - Bounded delegation dry-run: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a routine implementation route."`
 - Source hygiene: `python3 scripts/check_forge_source_hygiene.py`
 - Hermes dispatch skill install: `bash scripts/install_hermes_dispatch_delegate_skill.sh sage kern`
@@ -183,6 +184,13 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Added `SAGE_HEARTBEAT_INTERVAL_MS` to the SAGE orchestrator service deploy wrapper.
 - Updated the runtime sync worker and service deploy wrapper to probe Command Center through `https://command-center.nuvuestudio.net`.
 - Verification: local one-shot with `SAGE_HEARTBEAT_INTERVAL_MS=0` wrote `sage_orchestrator_heartbeat` to Convex with queue counts visible in `/audit`.
+
+## 2026-07-08 00:21 WAT - Subscription limit routing guardrail
+
+- Fixed DISPATCH runtime quota detection for subscription CLI wording such as `weekly limit` / `usage limit` and `resets Jul 9 at 12pm (Africa/Lagos)`.
+- Runtime state now parses reset timestamps from stored CLI errors, so previously remembered limit failures are treated as `quota_exhausted` even if the original failure was recorded before this parser existed.
+- Added `scripts/check_dispatch_subscription_limit_route.py`, a live LXC regression check that seeds the Claude weekly-limit wording and verifies DISPATCH skips Claude Sonnet until reset.
+- Verification: DISPATCH redeployed through Proxmox; the new check passed; planning dry-run skipped `claude-code / claude-sonnet-5` as `quota_exhausted` and selected `codex-cli-gpt55 / gpt-5.5`; `/registry/status` reports Claude Sonnet `health=quota_exhausted`, `available=false`, and parsed `quota_reset_at`.
 
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 

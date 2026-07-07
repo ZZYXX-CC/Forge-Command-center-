@@ -14,6 +14,7 @@ live availability. It must stay up and correct even when models are down.
 """
 from __future__ import annotations
 import argparse
+import datetime as dt
 import json
 import os
 import re
@@ -23,6 +24,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
@@ -69,6 +71,26 @@ CIRCUIT_OPEN_SECONDS = int(os.environ.get("DISPATCH_CIRCUIT_OPEN_SECONDS", "300"
 DEFAULT_RATE_LIMIT_RESET_SECONDS = int(os.environ.get("DISPATCH_RATE_LIMIT_RESET_SECONDS", "60"))
 VAEL_GATE_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_VAEL_GATE_TIMEOUT_SECONDS", "45"))
 VERIFICATION_JOB_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_VERIFICATION_JOB_TIMEOUT_SECONDS", "1800"))
+_LIMIT_RESET_RE = re.compile(
+    r"resets?\s+([A-Za-z]{3,9})\s+(\d{1,2})\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\(([^)]+)\))?",
+    re.I,
+)
+_MONTHS = {name.lower(): idx for idx, name in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1
+)}
+_MONTHS.update({
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
+})
 
 
 # ---------------------------------------------------------------- config
@@ -449,7 +471,7 @@ def runtime_state(surface: str | None, model: str | None = None) -> dict:
     if not row:
         return {"circuit_state": "closed", "quota_blocked": False}
     circuit_open_until = row["circuit_open_until"] or 0
-    quota_reset_at = row["quota_reset_at"] or 0
+    quota_reset_at = row["quota_reset_at"] or _parsed_rate_limit_reset_at(row["last_error"]) or 0
     return {
         "failure_count": row["failure_count"] or 0,
         "circuit_state": "open" if circuit_open_until > now else "closed",
@@ -462,19 +484,75 @@ def runtime_state(surface: str | None, model: str | None = None) -> dict:
     }
 
 
+def _rate_limit_message(value: object) -> str:
+    return str(value or "").lower()
+
+
+def _is_rate_limit_message(value: object) -> bool:
+    msg = _rate_limit_message(value)
+    return (
+        "rate limit" in msg
+        or "rate_limited" in msg
+        or "too many requests" in msg
+        or "quota" in msg
+        or "weekly limit" in msg
+        or "usage limit" in msg
+        or "hit your limit" in msg
+        or ("you've hit your" in msg and "limit" in msg)
+    )
+
+
+def _parsed_rate_limit_reset_at(value: object, now: float | None = None) -> float | None:
+    match = _LIMIT_RESET_RE.search(str(value or ""))
+    if not match:
+        return None
+    month_name, day_raw, hour_raw, minute_raw, am_pm, tz_name = match.groups()
+    month = _MONTHS.get(month_name.lower())
+    if not month:
+        return None
+    now_ts = time.time() if now is None else now
+    tz = dt.datetime.fromtimestamp(now_ts).astimezone().tzinfo
+    if tz_name:
+        try:
+            tz = ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            pass
+    current = dt.datetime.fromtimestamp(now_ts, tz)
+    hour = int(hour_raw)
+    minute = int(minute_raw or "0")
+    if am_pm:
+        marker = am_pm.lower()
+        if marker == "pm" and hour != 12:
+            hour += 12
+        elif marker == "am" and hour == 12:
+            hour = 0
+    try:
+        reset = dt.datetime(current.year, month, int(day_raw), hour, minute, tzinfo=tz)
+    except ValueError:
+        return None
+    if reset.timestamp() <= now_ts:
+        try:
+            reset = dt.datetime(current.year + 1, month, int(day_raw), hour, minute, tzinfo=tz)
+        except ValueError:
+            return None
+    return reset.timestamp()
+
+
 def _rate_limit_reset_seconds(exc: Exception) -> int:
     if isinstance(exc, urllib.error.HTTPError):
         retry_after = exc.headers.get("Retry-After") if exc.headers else None
         if retry_after and retry_after.isdigit():
             return max(1, int(retry_after))
+    parsed_at = _parsed_rate_limit_reset_at(exc)
+    if parsed_at:
+        return max(1, int(parsed_at - time.time()))
     return DEFAULT_RATE_LIMIT_RESET_SECONDS
 
 
 def _is_rate_limit_error(exc: Exception) -> bool:
     if isinstance(exc, urllib.error.HTTPError) and exc.code == 429:
         return True
-    msg = str(exc).lower()
-    return "rate limit" in msg or "rate_limited" in msg or "too many requests" in msg or "quota" in msg
+    return _is_rate_limit_message(exc)
 
 
 def apply_runtime_state(candidate: dict) -> dict:
