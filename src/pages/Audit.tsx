@@ -1,160 +1,208 @@
-import React from 'react';
-import { cn } from '@/src/lib/utils';
+import React, { useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { FileText, Search, Clock, ShieldCheck } from 'lucide-react';
-import { OverviewState } from '../types';
+import { Activity, AlertTriangle, CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
+import { useWorkEvents } from '@/src/lib/useConvex';
+import type { OverviewState } from '../types';
+import type { WorkRegistryEvent } from '@/src/lib/workRegistry';
+import { LogEntry, LogViewer } from '@/src/components/ui/LogViewer';
 
 interface AuditProps {
   data: OverviewState;
 }
 
+type EventLevel = LogEntry['level'];
+
+const eventLevel = (event: WorkRegistryEvent): EventLevel => {
+  const text = `${event.type} ${event.message}`.toLowerCase();
+  if (text.includes('failed') || text.includes('blocked') || text.includes('error') || text.includes('timeout')) return 'error';
+  if (text.includes('cancelled') || text.includes('requeued') || text.includes('review')) return 'warn';
+  if (text.includes('completed') || text.includes('passed') || text.includes('done')) return 'success';
+  if (text.includes('started') || text.includes('created') || text.includes('queued')) return 'info';
+  return 'debug';
+};
+
+const sourceFor = (event: WorkRegistryEvent): string => {
+  const actor = event.actor || 'SYSTEM';
+  if (actor.toUpperCase() === 'SAGE') return 'SAGE';
+  if (event.type.startsWith('sage_')) return 'SAGE';
+  if (event.type.includes('dispatch')) return 'DISPATCH';
+  if (event.type.includes('workflow')) return 'WORKFLOW';
+  return actor.toUpperCase().slice(0, 14);
+};
+
+const toLogEntry = (event: WorkRegistryEvent): LogEntry => ({
+  id: event._id,
+  timestamp: new Date(event.occurredAt).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }),
+  level: eventLevel(event),
+  source: sourceFor(event),
+  message: `${event.workId} | ${event.type} | ${event.message}`,
+});
+
+const parseMetadata = (value?: string): Record<string, unknown> | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const formatMetadataPreview = (metadata: Record<string, unknown>, maxLength = 2400): string => {
+  const rendered = JSON.stringify(metadata, null, 2);
+  if (rendered.length <= maxLength) return rendered;
+  return `${rendered.slice(0, maxLength)}\n... truncated ${rendered.length - maxLength} chars`;
+};
+
 export const Audit: React.FC<AuditProps> = ({ data }) => {
-  const changes = data.recentChanges;
+  void data;
+  const [query, setQuery] = useState('');
+  const [streamClearedAt, setStreamClearedAt] = useState<number | null>(null);
+  const events = useWorkEvents(250);
+
+  const filteredEvents = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return events;
+    return events.filter((event) => {
+      const metadata = event.metadata ?? '';
+      return [event.workId, event.type, event.actor, event.message, metadata]
+        .join(' ')
+        .toLowerCase()
+        .includes(needle);
+    });
+  }, [events, query]);
+
+  const streamEvents = useMemo(
+    () => filteredEvents.filter((event) => !streamClearedAt || event.occurredAt > streamClearedAt),
+    [filteredEvents, streamClearedAt],
+  );
+  const logEntries = useMemo(() => streamEvents.slice().reverse().map(toLogEntry), [streamEvents]);
+  const failures = events.filter((event) => eventLevel(event) === 'error').length;
+  const warnings = events.filter((event) => eventLevel(event) === 'warn').length;
+  const successes = events.filter((event) => eventLevel(event) === 'success').length;
+  const latest = events[0];
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-surface-base overflow-y-auto">
       <header className="px-6 py-4 border-b border-surface-border bg-surface-raised/50 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-          <div className="flex flex-col">
+        <div className="max-w-[1500px] mx-auto flex items-center justify-between gap-4">
+          <div className="flex flex-col min-w-0">
             <h1 className="text-heading-lg text-text-primary font-bold tracking-tighter uppercase">Audit / Logs</h1>
-            <span className="text-[10px] font-mono text-text-muted">/audit • System-Wide Activity & Change Log</span>
+            <span className="text-[10px] font-mono text-text-muted">/audit - live Convex work events, failures, routing, verification, and recovery</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
-              <input 
-                className="pl-9 pr-4 py-2 bg-surface-base border border-surface-border rounded text-[10px] font-bold uppercase text-text-primary placeholder:text-text-muted outline-none focus:border-emerald-accent transition-colors"
-                placeholder="Search logs..."
-              />
-            </div>
-            <button className="px-4 py-2 bg-surface-raised border border-surface-border rounded text-[10px] font-bold uppercase text-text-primary hover:bg-surface-hover transition-colors">
-              Export CSV
-            </button>
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-surface-base border border-surface-border rounded text-[10px] font-bold uppercase text-text-primary placeholder:text-text-muted outline-none focus:border-emerald-accent transition-colors"
+              placeholder="Search work id, actor, error..."
+            />
           </div>
         </div>
       </header>
 
-      <div className="max-w-[1400px] mx-auto p-6 space-y-6">
-        {/* KPI Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="max-w-[1500px] w-full mx-auto p-6 space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           {[
-            { label: 'Changes (24H)', value: 145, status: 'healthy' },
-            { label: 'Config Updates', value: 12, status: 'healthy' },
-            { label: 'Security Events', value: 0, status: 'healthy' },
-            { label: 'System Alerts', value: 43, status: 'degraded' },
-          ].map((kpi, i) => (
-            <div key={i} className="p-4 bg-surface-raised border border-surface-border rounded-lg">
-              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</span>
-              <div className="text-heading-lg font-mono text-text-primary mt-1">{kpi.value}</div>
+            { label: 'Live Events', value: events.length, tone: 'healthy', icon: Activity },
+            { label: 'Failures', value: failures, tone: failures ? 'incident' : 'healthy', icon: XCircle },
+            { label: 'Warnings', value: warnings, tone: warnings ? 'degraded' : 'healthy', icon: AlertTriangle },
+            { label: 'Completed', value: successes, tone: 'healthy', icon: CheckCircle2 },
+            {
+              label: 'Latest',
+              value: latest ? formatDistanceToNow(new Date(latest.occurredAt), { addSuffix: true }) : 'none',
+              tone: 'neutral',
+              icon: Clock,
+            },
+          ].map((kpi) => (
+            <div key={kpi.label} className="p-4 bg-surface-raised border border-surface-border rounded-lg">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</span>
+                <kpi.icon className={cn(
+                  'w-4 h-4',
+                  kpi.tone === 'incident' ? 'text-status-incident' :
+                    kpi.tone === 'degraded' ? 'text-status-degraded' :
+                      kpi.tone === 'healthy' ? 'text-status-healthy' : 'text-text-muted',
+                )} />
+              </div>
+              <div className="text-heading-md font-mono text-text-primary mt-2">{kpi.value}</div>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Activity Log */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
+          <section className="min-w-0 space-y-4">
+            <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-emerald-accent" />
-              <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Activity Log</h2>
+              <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Realtime System Event Stream</h2>
             </div>
-            <div className="bg-surface-raised border border-surface-border rounded-lg overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-surface-base/50 border-b border-surface-border">
-                    <th className="px-4 py-3 text-[10px] font-bold text-text-secondary uppercase">Type</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-text-secondary uppercase">Description</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-text-secondary uppercase">Actor</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-text-secondary uppercase">Domain</th>
-                    <th className="px-4 py-3 text-[10px] font-bold text-text-secondary uppercase text-right">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border/50">
-                  {changes.map((change) => (
-                    <tr key={change.id} className="hover:bg-surface-hover transition-colors group">
-                      <td className="px-4 py-4">
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
-                          change.type === 'incident_open' ? "bg-status-incident/10 text-status-incident" : 
-                          change.type === 'deployment' ? "bg-status-info/10 text-status-info" : 
-                          change.type === 'config' ? "bg-status-degraded/10 text-status-degraded" : "bg-surface-border text-text-muted"
-                        )}>{change.type.replace('_', ' ')}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-heading-sm text-text-primary">{change.description}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-label-xs font-bold uppercase text-text-muted">{change.actor}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-label-xs font-bold uppercase text-emerald-accent">{change.domain}</span>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span className="text-label-xs font-mono text-text-secondary">
-                          {formatDistanceToNow(new Date(change.occurredAt), { addSuffix: true })}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            <LogViewer
+              logs={logEntries}
+              maxLogs={250}
+              className="h-[640px]"
+              title="Live Work Events"
+              emptyText={streamClearedAt ? "Visible stream cleared. New events will appear here." : "No Convex work events yet."}
+              enableCommands
+              onClear={() => setStreamClearedAt(Date.now())}
+            />
+          </section>
 
-          {/* Right Rail */}
-          <div className="space-y-6">
-            {/* Security Events */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-accent" />
-                <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Security Events</h2>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { id: 'sec-1', title: 'New Admin Login', severity: 'low', age: '1h ago' },
-                  { id: 'sec-2', title: 'API Key Rotation Due', severity: 'medium', age: 'Today' },
-                ].map((alert) => (
-                  <div key={alert.id} className="p-4 bg-surface-raised border border-surface-border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
+          <aside className="space-y-4 min-w-0">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-emerald-accent" />
+              <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Recent Detail</h2>
+            </div>
+            <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+              {filteredEvents.slice(0, 30).map((event) => {
+                const level = eventLevel(event);
+                const metadata = parseMetadata(event.metadata);
+                return (
+                  <div key={event._id} className="p-4 bg-surface-raised border border-surface-border rounded-lg space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{event.workId}</div>
+                        <div className="text-label-sm font-bold text-text-primary mt-1 break-words">{event.message}</div>
+                      </div>
                       <span className={cn(
-                        "text-label-xs font-bold uppercase",
-                        alert.severity === 'high' ? "text-status-incident" : "text-status-degraded"
-                      )}>{alert.severity} Priority</span>
-                      <span className="text-[9px] font-mono text-text-muted">{alert.age}</span>
+                        'px-2 py-1 rounded text-[9px] font-bold uppercase shrink-0',
+                        level === 'error' ? 'bg-status-incident/10 text-status-incident' :
+                          level === 'warn' ? 'bg-status-degraded/10 text-status-degraded' :
+                            level === 'success' ? 'bg-status-healthy/10 text-status-healthy' :
+                              'bg-surface-base text-text-muted',
+                      )}>
+                        {level}
+                      </span>
                     </div>
-                    <div className="text-label-xs font-bold text-text-primary mb-2">{alert.title}</div>
-                    <button className="text-[10px] font-bold text-emerald-accent uppercase hover:underline">View Details →</button>
+                    <div className="grid grid-cols-2 gap-3 text-[10px] font-mono text-text-muted">
+                      <span>{event.actor}</span>
+                      <span className="text-right">{formatDistanceToNow(new Date(event.occurredAt), { addSuffix: true })}</span>
+                      <span className="col-span-2 text-emerald-accent">{event.type}</span>
+                    </div>
+                    {metadata && (
+                      <pre className="max-h-28 overflow-auto rounded bg-surface-base border border-surface-border p-2 text-[10px] text-text-secondary whitespace-pre-wrap">
+                        {formatMetadataPreview(metadata)}
+                      </pre>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
+              {filteredEvents.length === 0 && (
+                <div className="p-6 bg-surface-raised border border-surface-border rounded-lg text-center text-text-muted text-label-sm">
+                  No matching events.
+                </div>
+              )}
             </div>
+          </aside>
+        </div>
 
-            {/* Retention Status */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-accent" />
-                <h2 className="text-label-sm font-bold text-text-primary uppercase tracking-wider">Retention Status</h2>
-              </div>
-              <div className="p-4 bg-surface-raised border border-surface-border rounded-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-label-xs text-text-primary font-bold uppercase">Audit Logs</span>
-                  <span className="text-[10px] font-mono text-status-healthy">365 Days</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-label-xs text-text-primary font-bold uppercase">System Logs</span>
-                  <span className="text-[10px] font-mono text-status-degraded">30 Days</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-label-xs text-text-primary font-bold uppercase">Trading Data</span>
-                  <span className="text-[10px] font-mono text-status-healthy">7 Years</span>
-                </div>
-                <div className="h-px bg-surface-border" />
-                <div className="flex items-center justify-between text-text-muted">
-                  <span className="text-[9px] uppercase">Storage Used</span>
-                  <span className="text-[10px] font-mono">1.2 TB</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="text-[10px] text-text-muted font-mono">
+          Dashboard data source: Convex `workEvents`. Existing service logs remain in systemd, but SAGE, DISPATCH, verifier, recovery, and Command Center actions should emit durable work events here.
         </div>
       </div>
     </div>

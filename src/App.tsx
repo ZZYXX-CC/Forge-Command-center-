@@ -193,6 +193,7 @@ function Dashboard() {
     location.pathname === '/clients' ? 'clients' : 
     location.pathname === '/bots' ? 'bots' : 
     location.pathname === '/dispatch' ? 'dispatch' :
+    location.pathname === '/audit' ? 'audit' :
     location.pathname === '/content' ? 'content' :
     location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 

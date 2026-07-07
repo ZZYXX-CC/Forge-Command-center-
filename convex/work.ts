@@ -252,6 +252,7 @@ export const createWorkItem = mutation({
     blocker: v.optional(v.string()),
     verificationStatus: v.optional(verificationStatus),
     verificationSummary: v.optional(v.string()),
+    dryRun: v.optional(v.boolean()),
     dueAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -293,6 +294,7 @@ export const updateWorkItem = mutation({
     blocker: v.optional(v.string()),
     verificationStatus: v.optional(verificationStatus),
     verificationSummary: v.optional(v.string()),
+    dryRun: v.optional(v.boolean()),
     dueAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -331,6 +333,28 @@ export const addWorkEvent = mutation({
     const now = Date.now();
     await ctx.db.patch(item._id, { updatedAt: now });
     return await ctx.db.insert("workEvents", { ...args, occurredAt: now });
+  },
+});
+
+export const listWorkEvents = query({
+  args: {
+    workId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 200;
+    if (args.workId) {
+      return await ctx.db
+        .query("workEvents")
+        .withIndex("by_workId_occurredAt", (q) => q.eq("workId", args.workId))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db
+      .query("workEvents")
+      .withIndex("by_occurredAt")
+      .order("desc")
+      .take(limit);
   },
 });
 
@@ -385,19 +409,261 @@ export const appendWorkEvent = mutation({
 
 export const recordRoutingDecision = mutation({
   args: {
+    sourceId: v.optional(v.string()),
     workId: v.optional(v.string()),
     task: v.string(),
     category: v.string(),
     complexity: v.string(),
+    urgency: v.optional(v.string()),
+    confidence: v.optional(v.string()),
     chosenSurface: v.optional(v.string()),
     chosenModel: v.optional(v.string()),
     via: v.optional(v.string()),
+    servedBy: v.optional(v.string()),
     status: v.string(),
     latencyMs: v.optional(v.number()),
     consideredJson: v.optional(v.string()),
+    classificationJson: v.optional(v.string()),
+    classifierModel: v.optional(v.string()),
+    whyLogJson: v.optional(v.string()),
+    rejectionsJson: v.optional(v.string()),
+    verificationJson: v.optional(v.string()),
+    quotaSnapshotJson: v.optional(v.string()),
+    circuitSnapshotJson: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("routingDecisions", { ...args, decidedAt: Date.now() });
+    const id = await ctx.db.insert("routingDecisions", { ...args, decidedAt: Date.now() });
+    if (args.whyLogJson) {
+      await ctx.db.insert("routingWhyLogs", {
+        workId: args.workId,
+        sourceId: args.sourceId,
+        routingDecisionId: id,
+        task: args.task,
+        whyLogJson: args.whyLogJson,
+        rejectionsJson: args.rejectionsJson,
+        createdAt: Date.now(),
+      });
+    }
+    return id;
+  },
+});
+
+export const upsertRoutingDecision = mutation({
+  args: {
+    sourceId: v.string(),
+    workId: v.optional(v.string()),
+    task: v.string(),
+    category: v.string(),
+    complexity: v.string(),
+    urgency: v.optional(v.string()),
+    confidence: v.optional(v.string()),
+    chosenSurface: v.optional(v.string()),
+    chosenModel: v.optional(v.string()),
+    via: v.optional(v.string()),
+    servedBy: v.optional(v.string()),
+    status: v.string(),
+    latencyMs: v.optional(v.number()),
+    consideredJson: v.optional(v.string()),
+    classificationJson: v.optional(v.string()),
+    classifierModel: v.optional(v.string()),
+    whyLogJson: v.optional(v.string()),
+    rejectionsJson: v.optional(v.string()),
+    verificationJson: v.optional(v.string()),
+    quotaSnapshotJson: v.optional(v.string()),
+    circuitSnapshotJson: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("routingDecisions")
+      .withIndex("by_sourceId", (q) => q.eq("sourceId", args.sourceId))
+      .first();
+    const { decidedAt, ...rest } = args;
+    if (existing) {
+      await ctx.db.patch(existing._id, { ...rest, decidedAt: decidedAt ?? existing.decidedAt });
+      if (args.whyLogJson) {
+        const existingWhy = await ctx.db
+          .query("routingWhyLogs")
+          .withIndex("by_sourceId", (q) => q.eq("sourceId", args.sourceId))
+          .first();
+        const whyPayload = {
+          workId: args.workId,
+          sourceId: args.sourceId,
+          routingDecisionId: existing._id,
+          task: args.task,
+          whyLogJson: args.whyLogJson,
+          rejectionsJson: args.rejectionsJson,
+        };
+        if (existingWhy) await ctx.db.patch(existingWhy._id, whyPayload);
+        else await ctx.db.insert("routingWhyLogs", { ...whyPayload, createdAt: now });
+      }
+      return existing._id;
+    }
+    const id = await ctx.db.insert("routingDecisions", { ...rest, sourceId: args.sourceId, decidedAt: decidedAt ?? now });
+    if (args.whyLogJson) {
+      await ctx.db.insert("routingWhyLogs", {
+        workId: args.workId,
+        sourceId: args.sourceId,
+        routingDecisionId: id,
+        task: args.task,
+        whyLogJson: args.whyLogJson,
+        rejectionsJson: args.rejectionsJson,
+        createdAt: now,
+      });
+    }
+    return id;
+  },
+});
+
+export const listModelRegistry = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("modelRegistry").take(args.limit ?? 200);
+  },
+});
+
+export const listModelRuntimeStatus = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    return await ctx.db.query("modelRuntimeStatus").withIndex("by_checkedAt").order("desc").take(args.limit ?? 200);
+  },
+});
+
+export const upsertModelRegistry = mutation({
+  args: {
+    registryId: v.string(),
+    provider: v.string(),
+    surface: v.string(),
+    model: v.string(),
+    capabilitiesJson: v.string(),
+    authorityRolesJson: v.string(),
+    allowedDomainsJson: v.optional(v.string()),
+    tier: v.string(),
+    trustLevel: v.optional(v.string()),
+    quotaJson: v.optional(v.string()),
+    costJson: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("modelRegistry")
+      .withIndex("by_registryId", (q) => q.eq("registryId", args.registryId))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { ...args, updatedAt: now });
+      return existing._id;
+    }
+    return await ctx.db.insert("modelRegistry", { ...args, updatedAt: now });
+  },
+});
+
+export const upsertModelRuntimeStatus = mutation({
+  args: {
+    registryId: v.string(),
+    surface: v.string(),
+    model: v.string(),
+    health: v.string(),
+    available: v.boolean(),
+    via: v.optional(v.string()),
+    quotaUsed: v.optional(v.number()),
+    quotaRemaining: v.optional(v.number()),
+    circuitState: v.string(),
+    lastSuccess: v.optional(v.number()),
+    lastFailure: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("modelRuntimeStatus")
+      .withIndex("by_registryId", (q) => q.eq("registryId", args.registryId))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { ...args, checkedAt: now });
+      return existing._id;
+    }
+    return await ctx.db.insert("modelRuntimeStatus", { ...args, checkedAt: now });
+  },
+});
+
+export const recordModelQuotaEvent = mutation({
+  args: {
+    registryId: v.string(),
+    surface: v.string(),
+    eventType: v.string(),
+    used: v.optional(v.number()),
+    remaining: v.optional(v.number()),
+    resetAt: v.optional(v.number()),
+    detail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("modelQuotaEvents", { ...args, occurredAt: Date.now() });
+  },
+});
+
+export const recordVerificationRun = mutation({
+  args: {
+    workId: v.optional(v.string()),
+    runId: v.string(),
+    routingDecisionId: v.optional(v.string()),
+    verifierSurface: v.optional(v.string()),
+    verifierModel: v.optional(v.string()),
+    state: v.union(
+      v.literal("pending"),
+      v.literal("passed"),
+      v.literal("failed"),
+      v.literal("needs_review"),
+      v.literal("verifier_unavailable"),
+      v.literal("timeout"),
+    ),
+    summary: v.optional(v.string()),
+    attemptsJson: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("verificationRuns")
+      .withIndex("by_runId", (q) => q.eq("runId", args.runId))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, args);
+      return existing._id;
+    }
+    return await ctx.db.insert("verificationRuns", args);
+  },
+});
+
+export const listVerificationRuns = query({
+  args: {
+    workId: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    if (args.workId) {
+      return await ctx.db
+        .query("verificationRuns")
+        .withIndex("by_workId_startedAt", (q) => q.eq("workId", args.workId))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db.query("verificationRuns").order("desc").take(limit);
+  },
+});
+
+export const recordRoutingWhyLog = mutation({
+  args: {
+    workId: v.optional(v.string()),
+    routingDecisionId: v.optional(v.string()),
+    sourceId: v.optional(v.string()),
+    task: v.optional(v.string()),
+    whyLogJson: v.string(),
+    rejectionsJson: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("routingWhyLogs", { ...args, createdAt: Date.now() });
   },
 });
 

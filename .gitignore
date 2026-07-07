@@ -9,3 +9,5 @@ coverage/
 .vercel/
 __pycache__/
 *.py[cod]
+.playwright-cli/
+.hermes/

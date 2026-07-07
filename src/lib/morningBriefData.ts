@@ -101,7 +101,7 @@ function generateMockOverviewState(): OverviewState {
   const recentChanges: ActivityEntry[] = [
     { id: 'chg-1', occurredAt: new Date(Date.now() - 600000).toISOString(), type: 'BOT ACTION', description: 'TrendFollower_V2 scaled BTC position', actor: 'EDGE', domain: 'trading' },
     { id: 'chg-2', occurredAt: new Date(Date.now() - 1800000).toISOString(), type: 'DEPLOY', description: 'forge ui deployed', actor: 'iCHRIS', domain: 'sites' },
-    { id: 'chg-3', occurredAt: new Date(Date.now() - 2400000).toISOString(), type: 'ORDER FILLED', description: 'P2P USDT buy completed', actor: 'BRIDGE', domain: 'p2p' },
+    { id: 'chg-3', occurredAt: new Date(Date.now() - 2400000).toISOString(), type: 'ORDER FILLED', description: 'P2P USDT buy completed', actor: 'EDGE', domain: 'p2p' },
   ];
 
   const priorityAlerts: Alert[] = [

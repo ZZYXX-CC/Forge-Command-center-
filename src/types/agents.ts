@@ -29,13 +29,13 @@ export interface Relationship {
 
 export const AGENTS: Agent[] = [
   {
-    id: 'miguel',
-    name: 'MIGUEL',
+    id: 'sage',
+    name: 'SAGE',
     emoji: '👑',
-    role: 'Coordinator / Orchestrator',
+    role: 'Core Brain / Strategic Orchestrator',
     tier: 'core',
     status: 'paused',
-    model: 'gpt-5.3-codex',
+    model: 'hermes / gpt-5.5',
     tools: [
       'acp-router', 'antfarm-workflows', 'github', 'gh-issues', 
       'filesystem', 'find-skills', 'clawhub', 'clawdhub', 
@@ -44,7 +44,7 @@ export const AGENTS: Agent[] = [
       'self-improvement'
     ],
     owns: ['routing', 'escalation', 'approvals', 'final decisions'],
-    collaboratesWith: ['vael', 'kern', 'edge', 'bridge', 'tester'],
+    collaboratesWith: ['vael', 'kern', 'edge', 'tester'],
     schedules: [
       { task: 'Morning Ops Digest', time: '08:00 WAT' },
       { task: 'Evening Ops Digest', time: '19:00 WAT' },
@@ -63,7 +63,7 @@ export const AGENTS: Agent[] = [
     model: 'gpt-5.2-codex',
     tools: ['ui-ux-pro-max', 'frontend-design', 'humanizer', 'Agent Browser', 'summarize', 'github'],
     owns: ['DS-compliant UI', 'UX acceptance criteria', 'visual consistency'],
-    collaboratesWith: ['miguel', 'kern', 'tester'],
+    collaboratesWith: ['sage', 'kern', 'tester'],
     lastHeartbeat: '12 min ago',
     actionsToday: 2
   },
@@ -77,7 +77,7 @@ export const AGENTS: Agent[] = [
     model: 'gpt-5.3-codex',
     tools: ['github', 'gh-issues', 'filesystem', 'antfarm-workflows', 'acp-router', 'mcporter', 'openclaw-agent-optimize', 'token-optimizer'],
     owns: ['DTOs', 'adapters', 'API wiring', 'frontend integration'],
-    collaboratesWith: ['miguel', 'vael', 'edge', 'bridge', 'tester'],
+    collaboratesWith: ['sage', 'vael', 'edge', 'tester'],
     lastHeartbeat: '9 min ago',
     actionsToday: 4
   },
@@ -91,25 +91,10 @@ export const AGENTS: Agent[] = [
     model: 'gpt-5.3-codex',
     tools: ['bybit-futures', 'trading-ops-pack', 'stock-analysis', 'github', 'summarize'],
     owns: ['risk contracts', 'thresholds', 'fallback safeguards'],
-    collaboratesWith: ['miguel', 'kern'],
-    policy: 'Need-to-know sync with BRIDGE via MIGUEL only',
+    collaboratesWith: ['sage', 'kern'],
+    policy: 'Trading and futures strategy routes through SAGE with KERN review for system changes.',
     lastHeartbeat: '14 min ago',
     actionsToday: 1
-  },
-  {
-    id: 'bridge',
-    name: 'BRIDGE',
-    emoji: '⚡',
-    role: 'P2P Ops / Schema',
-    tier: 'core',
-    status: 'paused',
-    model: 'gpt-5.3-codex',
-    tools: ['bybit-futures', 'trading-ops-pack', 'stock-analysis', 'github', 'summarize'],
-    owns: ['P2P schema', 'spread logic', 'payload/fallback definitions'],
-    collaboratesWith: ['miguel', 'kern'],
-    policy: 'Need-to-know sync with EDGE via MIGUEL only',
-    lastHeartbeat: '11 min ago',
-    actionsToday: 3
   },
   {
     id: 'tester',
@@ -121,36 +106,33 @@ export const AGENTS: Agent[] = [
     model: 'gpt-5.3-codex',
     tools: ['github', 'gh-issues', 'Agent Browser', 'summarize', 'filesystem'],
     owns: ['test packs', 'smoke checklist', 'pass/fail gate'],
-    collaboratesWith: ['miguel', 'vael', 'kern'],
+    collaboratesWith: ['sage', 'vael', 'kern'],
     lastHeartbeat: '20 min ago',
     actionsToday: 0
   },
   // Pipeline Agents
-  { id: 'p1', name: 'feature-dev planner', emoji: '📋', role: 'Planning breakdown + dependency map', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '67 min ago', actionsToday: 0 },
-  { id: 'p2', name: 'feature-dev setup', emoji: '🏗️', role: 'Repo/bootstrap standardization', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '69 min ago', actionsToday: 0 },
-  { id: 'p3', name: 'feature-dev developer', emoji: '💻', role: 'Implementation assistance', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '71 min ago', actionsToday: 0 },
-  { id: 'p4', name: 'feature-dev reviewer', emoji: '🔍', role: 'Quality / review comments', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '72 min ago', actionsToday: 0 },
-  { id: 'p5', name: 'feature-dev tester', emoji: '🧪', role: 'Test execution support', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '73 min ago', actionsToday: 0 },
-  { id: 'p6', name: 'feature-dev verifier', emoji: '✅', role: 'Acceptance + gate verification', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['miguel'], lastHeartbeat: '74 min ago', actionsToday: 0 },
+  { id: 'p1', name: 'feature-dev planner', emoji: '📋', role: 'Planning breakdown + dependency map', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '67 min ago', actionsToday: 0 },
+  { id: 'p2', name: 'feature-dev setup', emoji: '🏗️', role: 'Repo/bootstrap standardization', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '69 min ago', actionsToday: 0 },
+  { id: 'p3', name: 'feature-dev developer', emoji: '💻', role: 'Implementation assistance', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '71 min ago', actionsToday: 0 },
+  { id: 'p4', name: 'feature-dev reviewer', emoji: '🔍', role: 'Quality / review comments', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '72 min ago', actionsToday: 0 },
+  { id: 'p5', name: 'feature-dev tester', emoji: '🧪', role: 'Test execution support', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '73 min ago', actionsToday: 0 },
+  { id: 'p6', name: 'feature-dev verifier', emoji: '✅', role: 'Acceptance + gate verification', tier: 'pipeline', status: 'paused', model: 'gpt-4o', tools: [], owns: [], collaboratesWith: ['sage'], lastHeartbeat: '74 min ago', actionsToday: 0 },
 ];
 
 export const RELATIONSHIPS: Relationship[] = [
-  { from: 'miguel', to: 'vael', type: 'collaborates', interactions: 42 },
-  { from: 'miguel', to: 'kern', type: 'collaborates', interactions: 61 },
-  { from: 'miguel', to: 'edge', type: 'collaborates', interactions: 28 },
-  { from: 'miguel', to: 'bridge', type: 'collaborates', interactions: 31 },
-  { from: 'miguel', to: 'tester', type: 'collaborates', interactions: 19 },
+  { from: 'sage', to: 'vael', type: 'collaborates', interactions: 42 },
+  { from: 'sage', to: 'kern', type: 'collaborates', interactions: 61 },
+  { from: 'sage', to: 'edge', type: 'collaborates', interactions: 28 },
+  { from: 'sage', to: 'tester', type: 'collaborates', interactions: 19 },
   { from: 'vael', to: 'kern', type: 'collaborates', interactions: 38 },
   { from: 'vael', to: 'tester', type: 'collaborates', interactions: 12 },
   { from: 'kern', to: 'tester', type: 'collaborates', interactions: 24 },
-  { from: 'edge', to: 'miguel', type: 'routes-via' },
-  { from: 'bridge', to: 'miguel', type: 'routes-via' },
-  { from: 'edge', to: 'bridge', type: 'blocked', label: 'BLOCKED — route via MIGUEL only' },
-  // Pipeline reports to Miguel
-  { from: 'p1', to: 'miguel', type: 'reports-to' },
-  { from: 'p2', to: 'miguel', type: 'reports-to' },
-  { from: 'p3', to: 'miguel', type: 'reports-to' },
-  { from: 'p4', to: 'miguel', type: 'reports-to' },
-  { from: 'p5', to: 'miguel', type: 'reports-to' },
-  { from: 'p6', to: 'miguel', type: 'reports-to' },
+  { from: 'edge', to: 'sage', type: 'routes-via' },
+  // Pipeline reports to SAGE
+  { from: 'p1', to: 'sage', type: 'reports-to' },
+  { from: 'p2', to: 'sage', type: 'reports-to' },
+  { from: 'p3', to: 'sage', type: 'reports-to' },
+  { from: 'p4', to: 'sage', type: 'reports-to' },
+  { from: 'p5', to: 'sage', type: 'reports-to' },
+  { from: 'p6', to: 'sage', type: 'reports-to' },
 ];

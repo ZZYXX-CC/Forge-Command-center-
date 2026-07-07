@@ -2,7 +2,7 @@
 
 Status: active — agreed FORGE execution/work-visibility plan; supersedes the Paperclip/Antfarm-first integration path in `FORGE_PRD_v1.4.md`.
 Owner: Samuel (iCHRIS). Orchestration: SAGE. Technical execution: KERN + DISPATCH surfaces.
-Last updated: 2026-07-05.
+Last updated: 2026-07-06.
 
 Pairs with:
 
@@ -21,8 +21,8 @@ Hermes owns intake, scheduling, skills, and agent identity. SAGE owns priority/o
 
 The active mental model lives in `docs/FORGE_OPERATING_MODEL.md`:
 
-1. **Intelligence** — Claude models plan and make architecture/security/design decisions. Codex/GPT-5.5 is a peer for security-tagged work; Gemini CLI is design/UI planning and transitional toward Antigravity.
-2. **Execution / Routing** — DISPATCH classifies, checks live availability, walks the ranked chain, and logs fallback decisions.
+1. **Intelligence** — Claude models plan and make architecture/security/design decisions. Codex/GPT-5.5 is a peer for security-tagged work; Gemini CLI is UI/design planning and implementation only (never backend logic or infrastructure).
+2. **Execution / Routing** — DISPATCH classifies, checks live availability, walks the ranked tier chain, and logs fallback decisions. UI/front-end work routes to the `execution_ui_design` tier with a VAEL-first gate (see below).
 3. **Research / Work** — Hermes Agent is the round-the-clock worker: cron scheduling, webhooks/intake, tools, sessions, and compounding skills.
 4. **Self / Memory** — keep codebase memory MCP untouched for project/code context; add a separate Obsidian-compatible markdown vault for business/personal/strategic context.
 
@@ -100,7 +100,7 @@ Do not block shipping on Antfarm install or Paperclip onboarding. When those pat
 
 Everything else is optional glue.
 
-1. **Hermes** — `~/.hermes` → `Forge Core/.hermes`. Profiles: sage, kern, edge, vael, ink (+ scout/bridge idle).
+1. **Hermes** — `~/.hermes` → `Forge Core/.hermes`. Profiles: sage, kern, edge, vael, ink (+ scout idle).
 2. **DISPATCH** — `dispatch/` in this repo; deployed LXC `192.168.1.178:4001`.
 3. **Mac executor** — `dispatch/executor/executor.py`; live copy `~/.dispatch-executor/` on Mac `192.168.1.170:4100`.
 4. **LiteLLM** — homelab LXC `:4000`; config `/opt/litellm/config.yaml`.
@@ -119,7 +119,8 @@ Everything else is optional glue.
 - `kern-hermes-gpt55` / `hermes-kern-gpt55` — KERN running through Hermes with OpenAI-Codex GPT-5.5 credential pool; primary fallback when Codex CLI is rate-limited or read-only.
 - `codex-cli-gpt55` — Codex CLI with explicit `gpt-5.5`, repo `cwd`, and writable workspace mode.
 - `claude-code` — Claude Code CLI when session/quota allows.
-- `cursor` / `cursor-pinned` — Cursor Agent executor.
+- `cursor` / `cursor-pinned` — Cursor Agent executor; also design-compliance verifier in `execution_ui_design`.
+- `gemini-cli` — Gemini CLI; **UI/design only** (planning tier + `execution_ui_design` primary/verifier). Not for backend or infrastructure.
 - `ollama` / `nim` / `openrouter` — local/API fallback surfaces.
 
 Executor obligations:
@@ -131,6 +132,26 @@ Executor obligations:
 - Keep `docs/DISPATCH_HANDOFF.md` current after infrastructure changes.
 
 **Do not point Hermes agent model backends at DISPATCH.** Agents stay tool-calling on their subscription backend; DISPATCH is invoked as a **delegation tool** for specific tasks (see gotcha #1 in `DISPATCH_HANDOFF.md`).
+
+### UI/design execution gate (`execution_ui_design`)
+
+UI, front-end, and design-system work is a separate DISPATCH tier — not routine execution. Policy lives in `dispatch/dispatch.config.yaml` under `execution_ui_design`; the router classifies matching tasks when UI keywords co-occur with execution intent.
+
+| Step | Actor | Role |
+|------|-------|------|
+| 1 — before implementation | **VAEL** | `design_authority`: sets direction, brief, and brand/design-system constraints |
+| 2 — implementation | **Gemini 3.5 Flash** (`gemini-cli`) | Primary UI/design code worker; implements against VAEL's brief |
+| 3 — compliance check | **Gemini 3.1 Pro Preview** (`gemini-cli`) | Preferred `design_compliance_verification`; checks output against VAEL's brief (not taste overrides) |
+| 3 — compliance fallback | **Cursor** (`composer-2.5`) | Secondary verifier when Gemini compliance is unavailable |
+| 4 — high-stakes sign-off | **VAEL** | `final_design_approval` after verification when task complexity is `high_stakes` |
+
+Hard rules:
+
+- **VAEL before code** — no Gemini UI implementation until VAEL has set design direction.
+- **Gemini scope** — Gemini CLI is reserved for UI/design planning and UI/design code only; backend logic, infrastructure, and refactor tiers must not use Gemini as primary or verifier.
+- **Verifiers check compliance, not taste** — Gemini 3.1 Pro Preview and Cursor verify against VAEL's brief; they do not override brand or design-authority decisions.
+
+Free-tier recovery (`ollama`, `openrouter`) exists at the end of the chain for cost fallback only; subscription verification still applies.
 
 ## Phases A–F
 
@@ -256,7 +277,7 @@ Build this before considering Paperclip or Linear integration. Linear can remain
 
 | Path | Purpose |
 |------|---------|
-| `dispatch/dispatch.config.yaml` | Routing policy — edit tiers here |
+| `dispatch/dispatch.config.yaml` | Routing policy — edit tiers here (`execution_ui_design` = VAEL-first UI gate) |
 | `dispatch/router/dispatch_router.py` | Classify, select, route, SQLite log |
 | `dispatch/router/dispatch_service.py` | OpenAI-compatible HTTP service |
 | `dispatch/executor/executor.py` | Mac CLI executor (source of truth) |
@@ -276,18 +297,18 @@ Build this before considering Paperclip or Linear integration. Linear can remain
 Execute in order; check off in `docs/DISPATCH_HANDOFF.md` when done.
 
 - [x] **Commit `convex/`, `dispatch/`, `docs/` to GitHub** — branch `dispatch-continuation-20260705` has PR #1 open; keep this plan committed with follow-up changes.
-- [ ] **Expose SAGE orchestration path** — SAGE creates/assigns `workItems`; KERN appears as executor, not orchestrator.
-- [ ] **Add `hermes-kern-gpt55` executor surface** — use Hermes OpenAI-Codex GPT-5.5 credential pool as a DISPATCH executor fallback.
-- [ ] **Patch Codex CLI surface** — explicit `gpt-5.5`, repo `cwd`, writable workspace mode.
-- [ ] **Install Mac executor LaunchAgent** — keep `:4100` alive across restarts/logouts.
+- [x] **Expose SAGE orchestration path** — SAGE creates/assigns `workItems`; KERN appears as executor, not orchestrator.
+- [x] **Add `hermes-kern-gpt55` executor surface** — use Hermes OpenAI-Codex GPT-5.5 credential pool as a DISPATCH executor fallback.
+- [x] **Patch Codex CLI surface** — explicit `gpt-5.5`, repo `cwd`, writable workspace mode.
+- [x] **Install Mac executor LaunchAgent** — keep `:4100` alive across restarts/logouts.
 - [ ] **Re-auth Claude Code on Mac** when session limit clears; Codex/Cursor/Hermes-GPT5.5 should cover fallback execution.
 - [x] **Add Convex `workItems` + `workEvents` + `routingDecisions` + `executorRuns` tables** — `convex/schema.ts`, mutations in `convex/work.ts` (new).
-- [ ] **Ingest DISPATCH decisions into Convex** — cron or router hook; start with polling `/decisions` from a Convex action if push is not ready.
+- [x] **Ingest DISPATCH decisions into Convex** — `dispatch-convex-sync.service` polls DISPATCH registry/runtime/decisions/verification jobs and syncs them into Convex.
 - [x] **Build `/tasks` cockpit** — board/list/detail timeline from Convex; show owner agent, orchestrator, status, surface/model, GitHub issue/PR, blockers, verification.
 - [x] **Self-host Convex on homelab** — Docker on forge-node-01; set `VITE_CONVEX_URL` / `CONVEX_SELF_HOSTED_URL` (Phase B infra). LXC `forge-convex` at `192.168.1.179`, backend `:3210`, site `:3211`, dashboard `:6791`.
-- [ ] **Telegram intake → `workItems`** — Hermes webhook creates row, KERN delegates via skill (Phase A + B).
-- [ ] **Rotate shared Telegram bot tokens** before enabling phone intake (hazard: archived OpenClaw shares tokens with live Hermes).
-- [ ] **Fix pre-existing frontend TS errors** — unblocks `npm run build` for deploy.
+- [ ] **Telegram intake → `workItems`** — intentionally gated behind the running main SAGE Hermes gateway; the generic FORGE poller exists for future fleet/group behavior but must not compete for the same bot token.
+- [ ] **Rotate shared Telegram bot tokens** before enabling any direct FORGE phone intake (hazard: archived OpenClaw shares tokens with live Hermes).
+- [x] **Fix pre-existing frontend TS errors** — `npm run lint` and `npm run build` pass for deploy.
 
 ## Success criteria (30-day)
 

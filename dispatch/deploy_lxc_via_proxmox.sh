@@ -22,6 +22,9 @@ scp \
   dispatch/dispatch.config.yaml \
   dispatch/router/dispatch_router.py \
   dispatch/router/dispatch_service.py \
+  dispatch/registry/__init__.py \
+  dispatch/registry/registry.py \
+  dispatch/registry/models.yaml \
   "$PROXMOX_HOST:$REMOTE_TMP/"
 
 ssh "$PROXMOX_HOST" "
@@ -29,6 +32,11 @@ ssh "$PROXMOX_HOST" "
   pct push '$LXC_ID' '$REMOTE_TMP/dispatch.config.yaml' /opt/dispatch/dispatch.config.yaml
   pct push '$LXC_ID' '$REMOTE_TMP/dispatch_router.py' /opt/dispatch/router/dispatch_router.py
   pct push '$LXC_ID' '$REMOTE_TMP/dispatch_service.py' /opt/dispatch/router/dispatch_service.py
+  pct exec '$LXC_ID' -- mkdir -p /opt/dispatch/registry
+  pct push '$LXC_ID' '$REMOTE_TMP/__init__.py' /opt/dispatch/registry/__init__.py
+  pct push '$LXC_ID' '$REMOTE_TMP/registry.py' /opt/dispatch/registry/registry.py
+  pct push '$LXC_ID' '$REMOTE_TMP/models.yaml' /opt/dispatch/registry/models.yaml
+  pct exec '$LXC_ID' -- /opt/litellm/venv/bin/python3 -c \"import sys; sys.path.insert(0, '/opt/dispatch/router'); import dispatch_router; import dispatch_service; print('dispatch import preflight ok')\"
   pct exec '$LXC_ID' -- systemctl restart dispatch-service
   pct exec '$LXC_ID' -- systemctl is-active dispatch-service
 "

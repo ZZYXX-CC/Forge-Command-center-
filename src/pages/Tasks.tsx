@@ -4,7 +4,7 @@ import { ForgeIcon } from '../components/primitives/ForgeIcon';
 import { DispatchJob, DispatchPollResult, OverviewState, Task, TasksState, Workflow, WorkflowStage, WorkflowStep, WorkflowVerification } from '../types';
 import { fetchTasksState } from '../lib/tasksData';
 import { cn } from '../lib/utils';
-import { addWorkEvent, createWorkflow, createWorkItem, recordExecutorRun, updateWorkflowStage, updateWorkItem, useWorkflowsForItem, useWorkItemDetail, useWorkItems } from '../lib/useConvex';
+import { addWorkEvent, createWorkflow, createWorkItem, recordExecutorRun, recordRoutingDecision, recordVerificationRun, updateWorkflowStage, updateWorkItem, useWorkflowsForItem, useWorkItemDetail, useWorkItems } from '../lib/useConvex';
 import { isConvexConfigured } from '../lib/convex';
 import { getWorkRegistrySource, workItemsToTasksState } from '../lib/workRegistry';
 import type { WorkItemPriority, WorkItemStatus } from '../lib/workRegistry';
@@ -220,6 +220,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState<WorkItemPriority>('medium');
   const [newStatus, setNewStatus] = useState<WorkItemStatus>('ready');
+  const [newDryRun, setNewDryRun] = useState(false);
   const [note, setNote] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -371,6 +372,56 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
     });
   };
 
+  const persistDispatchControlPlane = async (result: DispatchPollResult, job: DispatchJob, workflow: Workflow) => {
+    const dispatch = result.dispatch;
+    if (!dispatch) return;
+    const classification = dispatch.classification && typeof dispatch.classification === 'object'
+      ? dispatch.classification as Record<string, unknown>
+      : {};
+    const verification = dispatch.verification && typeof dispatch.verification === 'object'
+      ? dispatch.verification as Record<string, unknown>
+      : {};
+    const state = typeof verification.state === 'string' ? verification.state : 'needs_review';
+    const safeState = ['pending', 'passed', 'failed', 'needs_review', 'verifier_unavailable', 'timeout'].includes(state)
+      ? state as 'pending' | 'passed' | 'failed' | 'needs_review' | 'verifier_unavailable' | 'timeout'
+      : 'needs_review';
+    const decisionId = await recordRoutingDecision({
+      sourceId: job.id,
+      workId: workflow.workItemId,
+      task: job.prompt ?? workflow.trigger,
+      category: String(dispatch.category ?? classification.category ?? 'unknown'),
+      complexity: String(dispatch.complexity ?? classification.complexity ?? 'routine'),
+      urgency: typeof classification.urgency === 'string' ? classification.urgency : undefined,
+      confidence: typeof classification.confidence === 'string' ? classification.confidence : undefined,
+      chosenSurface: typeof dispatch.chosen_surface === 'string' ? dispatch.chosen_surface : result.surface ?? undefined,
+      chosenModel: typeof dispatch.chosen_model === 'string' ? dispatch.chosen_model : result.model ?? undefined,
+      via: typeof dispatch.via === 'string' ? dispatch.via : undefined,
+      servedBy: result.model ?? undefined,
+      status: String(dispatch.status ?? result.status),
+      latencyMs: typeof dispatch.latency_ms === 'number' ? dispatch.latency_ms : result.latencyMs ?? undefined,
+      consideredJson: JSON.stringify(dispatch.considered ?? []),
+      classificationJson: JSON.stringify(classification),
+      classifierModel: typeof dispatch.classifier_model === 'string' ? dispatch.classifier_model : undefined,
+      whyLogJson: JSON.stringify(dispatch.why_log ?? []),
+      rejectionsJson: JSON.stringify(dispatch.rejections ?? []),
+      verificationJson: JSON.stringify(verification),
+      quotaSnapshotJson: JSON.stringify(dispatch.quota_snapshot ?? {}),
+      circuitSnapshotJson: JSON.stringify(dispatch.circuit_snapshot ?? {}),
+    });
+    await recordVerificationRun({
+      workId: workflow.workItemId,
+      runId: `${job.id}:verification`,
+      routingDecisionId: typeof decisionId === 'string' ? decisionId : undefined,
+      verifierSurface: Array.isArray((verification as any).attempts) ? (verification as any).attempts[0]?.surface : undefined,
+      verifierModel: Array.isArray((verification as any).attempts) ? (verification as any).attempts[0]?.model : undefined,
+      state: safeState,
+      summary: `DISPATCH verification ${safeState}`,
+      attemptsJson: JSON.stringify((verification as any).attempts ?? []),
+      startedAt: workflow.startTime,
+      completedAt: safeState === 'pending' ? undefined : Date.now(),
+    });
+  };
+
   useEffect(() => {
     if (!workflowJob || !currentWorkflow || !isWorkflowActive(currentWorkflow)) return;
 
@@ -452,6 +503,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
           },
         );
         await persistExecutorRun(result, workflowJob, { ...currentWorkflow, executor, surface }, true);
+        await persistDispatchControlPlane(result, workflowJob, { ...currentWorkflow, executor, surface });
         setWorkflowJob(null);
       } catch (err) {
         if (!cancelled) {
@@ -509,12 +561,33 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
         owner: 'SAGE',
         executor: 'KERN',
         surface: 'command-center',
+        dryRun: newDryRun,
       });
       setNewTitle('');
       setNewPriority('medium');
       setNewStatus('ready');
+      setNewDryRun(false);
       setSelectedId(created.workId);
     }, 'Work item created.');
+  };
+
+  const handleCreateRouteSelfTest = () => {
+    void runRegistryAction(async () => {
+      const created = await createWorkItem({
+        title: 'Route self-test: Command Center to DISPATCH',
+        summary: 'Synthetic dry-run work item to verify Convex -> SAGE -> DISPATCH -> Convex without model execution.',
+        priority: 'low',
+        status: 'ready',
+        orchestrator: 'SAGE',
+        owner: 'SAGE',
+        executor: 'DISPATCH',
+        surface: 'dispatch-auto',
+        verificationStatus: 'waived',
+        verificationSummary: 'Synthetic dry-run awaiting SAGE orchestration.',
+        dryRun: true,
+      });
+      setSelectedId(created.workId);
+    }, 'Route self-test created.');
   };
 
   const handleStatusChange = (status: WorkItemStatus) => {
@@ -560,6 +633,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
   const buildDispatchPayload = (task: Task) => ({
     repo: selectedWorkItem?.branch ?? selectedWorkItem?.surface ?? undefined,
     command: task.title,
+    dryRun: selectedWorkItem?.dryRun,
     prompt: [
       `Work item: ${task.title}`,
       `ID: ${task.id}`,
@@ -569,6 +643,14 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
       `Priority: ${task.priority}`,
       `Status: ${task.status}`,
     ].filter(Boolean).join('\n'),
+    routingIntent: {
+      task_type: task.status === 'todo' || task.status === 'in_progress' ? 'implementation' : 'review',
+      domain: task.category === 'OWN BUILDS' ? 'code' : task.category.toLowerCase().replace(/\s+/g, '_'),
+      authority_agent: selectedWorkItem?.owner?.toLowerCase() || selectedWorkItem?.orchestrator?.toLowerCase() || 'sage',
+      verification_policy: task.priority === 'urgent' || task.priority === 'high' ? 'required' : 'time_bounded',
+      workId: selectedWorkItem?.workId ?? task.id,
+      priority: task.priority,
+    },
   });
 
   const handleStartJob = async () => {
@@ -716,7 +798,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
             {actionMessage && <span className="text-[11px] text-status-healthy">{actionMessage}</span>}
             {actionError && <span className="text-[11px] text-status-incident">{actionError}</span>}
           </div>
-          <div className="grid gap-3 lg:grid-cols-[1fr_140px_140px_auto]">
+          <div className="grid gap-3 lg:grid-cols-[1fr_140px_140px_auto_auto]">
             <input
               value={newTitle}
               onChange={(event) => setNewTitle(event.target.value)}
@@ -747,7 +829,26 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
             >
               {isMutating ? 'Saving…' : 'Add'}
             </button>
+            <button
+              type="button"
+              onClick={handleCreateRouteSelfTest}
+              disabled={!canWrite || isMutating}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-surface-border bg-surface-overlay px-4 py-2 text-[12px] font-bold text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ForgeIcon name="routing-2" size="sm" />
+              Route self-test
+            </button>
           </div>
+          <label className="mt-3 inline-flex items-center gap-2 text-[11px] text-text-secondary">
+            <input
+              type="checkbox"
+              checked={newDryRun}
+              onChange={(event) => setNewDryRun(event.target.checked)}
+              disabled={!canWrite || isMutating}
+              className="h-3.5 w-3.5 accent-current disabled:cursor-not-allowed"
+            />
+            Dry-run only
+          </label>
         </form>
         <div className="mt-4 rounded-xl border border-surface-border bg-surface-base p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -856,6 +957,7 @@ export const Tasks: React.FC<TasksProps> = ({ data }) => {
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Executor</span><span className="text-text-primary">{selectedWorkItem?.executor ?? selected.assignee ?? 'KERN / DISPATCH'}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Surface</span><span className="text-text-primary">{selectedWorkItem?.surface ?? 'dispatch-auto'}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Verification</span><span className="text-status-healthy">{selectedWorkItem?.verificationStatus?.replace('_', ' ') ?? 'lint/build required'}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-text-muted">Mode</span><span className={selectedWorkItem?.dryRun ? 'text-accent-primary' : 'text-text-primary'}>{selectedWorkItem?.dryRun ? 'dry-run' : 'execution'}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-text-muted">Deadline</span><span className={isOverdue(selected) ? 'text-status-incident' : 'text-text-primary'}>{dueLabel(selected)}</span></div>
                 {selectedWorkItem?.pullRequestUrl && (
                   <a href={selectedWorkItem.pullRequestUrl} className="block text-accent-primary hover:underline" target="_blank" rel="noreferrer">Open GitHub PR →</a>

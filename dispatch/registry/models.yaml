@@ -1,0 +1,276 @@
+models:
+  - id: ollama/qwen2.5-coder:14b
+    provider: ollama
+    surface: ollama
+    model: qwen2.5-coder:14b
+    capabilities: [coding, reasoning, local, classification]
+    authority_roles: [routine_execution, classifier]
+    allowed_domains: [general, code, infrastructure]
+    tier: free_local
+    trust_level: draft
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: local}
+    cost: {class: free_local, estimated_unit_cost: 0}
+
+  - id: nim/deepseek-ai/deepseek-v4-pro
+    provider: nvidia-nim
+    surface: nim
+    model: deepseek-ai/deepseek-v4-pro
+    capabilities: [coding, reasoning, refactor, infrastructure, long_context]
+    authority_roles: [routine_execution, infra_draft]
+    allowed_domains: [general, code, infrastructure]
+    tier: free_api
+    trust_level: draft
+    quota: {rpm_limit: 40, tpm_limit: null, reset_policy: rolling_minute}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: nim/moonshotai/kimi-k2.6
+    provider: nvidia-nim
+    surface: nim
+    model: moonshotai/kimi-k2.6
+    capabilities: [research, reasoning, coding, long_context, classification]
+    authority_roles: [research, classifier]
+    allowed_domains: [general, code, research]
+    tier: free_api
+    trust_level: draft
+    quota: {rpm_limit: 40, tpm_limit: null, reset_policy: rolling_minute}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: nim/nvidia/nemotron-3-ultra-550b-a55b
+    provider: nvidia-nim
+    surface: nim
+    model: nvidia/nemotron-3-ultra-550b-a55b
+    capabilities: [reasoning, planning, verification, classification, long_context]
+    authority_roles: [classifier, verification, second_opinion]
+    allowed_domains: [general, code, planning, research]
+    tier: free_api
+    trust_level: review
+    quota: {rpm_limit: 40, tpm_limit: null, reset_policy: rolling_minute}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: nim/minimaxai/minimax-m3
+    provider: nvidia-nim
+    surface: nim
+    model: minimaxai/minimax-m3
+    capabilities: [reasoning, coding, orchestration, long_context]
+    authority_roles: [routine_execution, planning_fallback]
+    allowed_domains: [general, code, planning]
+    tier: free_api
+    trust_level: draft
+    quota: {rpm_limit: 40, tpm_limit: null, reset_policy: rolling_minute}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+    provider: openrouter
+    surface: openrouter
+    model: nvidia/nemotron-3-ultra-550b-a55b:free
+    capabilities: [reasoning, planning, verification, classification]
+    authority_roles: [classifier, verification, second_opinion]
+    allowed_domains: [general, code, planning, research]
+    tier: free_api
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: provider}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: openrouter/qwen/qwen3-coder:free
+    provider: openrouter
+    surface: openrouter
+    model: qwen/qwen3-coder:free
+    capabilities: [coding, refactor, recovery]
+    authority_roles: [routine_execution, recovery]
+    allowed_domains: [general, code, ui_design]
+    tier: free_api
+    trust_level: draft
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: provider}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: zenmux/anthropic/claude-sonnet-5-free
+    provider: zenmux
+    surface: zenmux
+    model: anthropic/claude-sonnet-5-free
+    capabilities: [planning, reasoning, coding, verification, long_context, recovery]
+    authority_roles: [planning_fallback, verification, recovery, research]
+    allowed_domains: [general, code, infrastructure, planning, research, security]
+    tier: free_api
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: provider}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: zenmux/anthropic/claude-fable-5-free
+    provider: zenmux
+    surface: zenmux
+    model: anthropic/claude-fable-5-free
+    capabilities: [planning, architecture, security, reasoning, coding, verification, highest_stakes, long_context]
+    authority_roles: [highest_stakes_reasoning, hard_planning, verification, second_opinion]
+    allowed_domains: [general, code, infrastructure, planning, research, security]
+    tier: free_api
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: provider}
+    cost: {class: free_api, estimated_unit_cost: 0}
+
+  - id: subscription/claude-code/claude-sonnet-5
+    provider: claude-code
+    surface: claude-code
+    model: claude-sonnet-5
+    capabilities: [planning, architecture, security, reasoning, recovery, verification]
+    authority_roles: [planning_primary, recovery, high_stakes_reasoning]
+    allowed_domains: [general, code, infrastructure, planning, security]
+    tier: subscription
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/claude-code/claude-opus-4-8
+    provider: claude-code
+    surface: claude-code
+    model: claude-opus-4-8
+    capabilities: [planning, architecture, security, reasoning, highest_stakes]
+    authority_roles: [hard_planning, high_stakes_reasoning]
+    allowed_domains: [general, code, infrastructure, planning, security]
+    tier: subscription
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/claude-code/claude-fable-5
+    provider: claude-code
+    surface: claude-code
+    model: claude-fable-5
+    capabilities: [planning, architecture, highest_stakes]
+    authority_roles: [highest_stakes_reasoning]
+    allowed_domains: [general, planning, security]
+    tier: subscription
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/codex-cli-gpt55/gpt-5.5
+    provider: codex-cli
+    surface: codex-cli-gpt55
+    model: gpt-5.5
+    capabilities: [planning, coding, refactor, verification, writable_workspace]
+    authority_roles: [planning_fallback, verification, second_opinion]
+    allowed_domains: [general, code, infrastructure, planning]
+    tier: subscription
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/hermes-kern-gpt55/gpt-5.5
+    provider: hermes
+    surface: hermes-kern-gpt55
+    model: gpt-5.5
+    capabilities: [planning, infrastructure, schemas, repo_policy, verification, writable_workspace]
+    authority_roles: [kern, planning_fallback, verification, second_opinion]
+    allowed_domains: [general, code, infrastructure, planning]
+    tier: subscription
+    trust_level: trusted
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/cursor/composer-2.5
+    provider: cursor
+    surface: cursor
+    model: composer-2.5
+    capabilities: [coding, ui_implementation, verification, design_compliance]
+    authority_roles: [verification, design_compliance_verification]
+    allowed_domains: [general, code, ui_design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemini-3-flash-preview
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemini-3-flash-preview
+    capabilities: [ui_implementation, frontend, design_system, accessibility]
+    authority_roles: [ui_design_fallback]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemini-3.1-pro-preview
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemini-3.1-pro-preview
+    capabilities: [ui_design_planning, design_compliance, accessibility, verification]
+    authority_roles: [ui_design_planning, design_compliance_verification]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemini-2.5-pro
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemini-2.5-pro
+    capabilities: [ui_design_planning, reasoning, design_compliance, accessibility, verification]
+    authority_roles: [ui_design_planning, design_compliance_verification]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemini-3.1-flash-lite
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemini-3.1-flash-lite
+    capabilities: [ui_implementation, frontend, design_system, accessibility]
+    authority_roles: [ui_design_primary]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemini-3.5-flash
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemini-3.5-flash
+    capabilities: [ui_implementation, frontend, design_system, accessibility]
+    authority_roles: [ui_design_primary, ui_design_fallback]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: review
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemma-4-31b-it
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemma-4-31b-it
+    capabilities: [ui_implementation, frontend, coding, lightweight_reasoning]
+    authority_roles: [routine_execution, ui_design_fallback]
+    allowed_domains: [general, code, ui_design, frontend, design]
+    tier: subscription
+    trust_level: draft
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/gemini-cli/gemma-4-26b-a4b-it
+    provider: gemini-cli
+    surface: gemini-cli
+    model: gemma-4-26b-a4b-it
+    capabilities: [coding, lightweight_reasoning, draft_execution]
+    authority_roles: [routine_execution]
+    allowed_domains: [general, code, ui_design, frontend]
+    tier: subscription
+    trust_level: draft
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}
+
+  - id: subscription/hermes-vael/design-authority
+    provider: hermes
+    surface: hermes-vael
+    model: vael
+    capabilities: [design_direction, design_compliance, brand, accessibility]
+    authority_roles: [vael, design_authority, final_design_approval]
+    allowed_domains: [ui_design, frontend, design]
+    tier: subscription
+    trust_level: authority
+    quota: {rpm_limit: null, tpm_limit: null, reset_policy: subscription}
+    cost: {class: subscription, estimated_unit_cost: 0}

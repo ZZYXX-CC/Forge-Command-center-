@@ -181,7 +181,7 @@ DISPATCH decides, Hermes executes. API-model work goes through LiteLLM on the ho
 Use Hermes's existing webhook or Telegram intake so any channel message becomes a `dispatchTasks` row. Rotate the shared bot tokens first (hazard documented in `/Volumes/Patriot 2TB/Dev Test/.openclaw/CLAUDE.md`). Do not resurrect OpenClaw. Deliverable: a task sent from the phone is classified, routed, executed, and delivered back with nothing opened manually.
 
 ### Phase 6: The DISPATCH panel
-One panel in the Command Center next to SAGE, EDGE, BRIDGE, VAEL, and KERN, reading Convex reactively. Shows the routing table, live surface availability, the decision log, quota and cap burn per surface (color-coded by billing class), and a fallback-pattern alert. Use Solar icons (Iconify), not lucide. Deliverable: DISPATCH visible as one more panel, not a separate product.
+One panel in the Command Center next to SAGE, EDGE, VAEL, and KERN, reading Convex reactively. Shows the routing table, live surface availability, the decision log, quota and cap burn per surface (color-coded by billing class), and a fallback-pattern alert. Use Solar icons (Iconify), not lucide. Deliverable: DISPATCH visible as one more panel, not a separate product.
 
 ### Phase 7: Unattended overnight loop
 A Hermes cron kicks a nightly build cycle (pull top task, plan, code, test, ship), DISPATCH routes each step down its tier chain, every fallback logged. Deliverable: at least one full plan/code/test/ship cycle overnight with no keyboard involvement, and Hermes's skill count grows.

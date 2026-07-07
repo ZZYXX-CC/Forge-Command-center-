@@ -18,9 +18,16 @@ export interface ConsideredSurface {
   routable: boolean;
   available: boolean | null;
   gated_out: boolean;
+  capabilities?: string[];
+  authority_roles?: string[];
+  trust_level?: string;
+  quota_remaining?: number | null;
+  circuit_state?: string;
+  rejection_reason?: string | null;
 }
 
 export interface DispatchDecision {
+  sourceId?: string;
   ts: string;
   task?: string;
   category: string;
@@ -34,6 +41,12 @@ export interface DispatchDecision {
   latency_ms: number | null;
   status: string;
   considered?: string;
+  why_log?: string;
+  rejections?: string;
+  classification_json?: string;
+  quota_snapshot?: string;
+  circuit_snapshot?: string;
+  verification_json?: string;
 }
 
 export interface DispatchSurfaceStatus {
@@ -44,6 +57,64 @@ export interface DispatchSurfaceStatus {
   via: string | null;
   available: boolean;
   detail?: string | null;
+}
+
+export interface DispatchModelRuntime {
+  health: string;
+  available: boolean;
+  via?: string | null;
+  detail?: string | null;
+  quota_used?: number | null;
+  quota_remaining?: number | null;
+  circuit_state: string;
+  last_success?: number | null;
+  last_failure?: number | null;
+  last_error?: string | null;
+}
+
+export interface DispatchRegistryModel {
+  id: string;
+  provider: string;
+  surface: string;
+  model: string;
+  capabilities: string[];
+  authority_roles: string[];
+  allowed_domains?: string[];
+  tier: string;
+  trust_level?: string;
+  quota?: Record<string, unknown>;
+  cost?: Record<string, unknown>;
+  runtime?: DispatchModelRuntime;
+}
+
+export interface DispatchVerificationJob {
+  id: number;
+  routing_decision_id?: number | null;
+  ts?: string;
+  updated_ts?: string;
+  status: string;
+  task?: string;
+  attempts_json?: string | null;
+  result_json?: string | null;
+  error?: string | null;
+}
+
+export interface DispatchDryRunResult {
+  id?: string;
+  model?: string;
+  choices?: Array<{ message?: { content?: string } }>;
+  x_dispatch?: {
+    tier?: string;
+    category?: string;
+    status?: string;
+    chosen_surface?: string | null;
+    chosen_model?: string | null;
+    via?: string | null;
+    why_log?: string[];
+    rejections?: Array<{ surface?: string; model?: string; reason?: string }>;
+    considered?: ConsideredSurface[];
+    classification?: Record<string, unknown>;
+  };
 }
 
 export interface DispatchHealth {
@@ -58,6 +129,8 @@ export interface SubmitTaskInput {
   workflowId?: string;
   workItemId?: string;
   trigger?: string;
+  routingIntent?: Record<string, unknown>;
+  dryRun?: boolean;
 }
 
 export interface CreateWorkflowRunInput extends SubmitTaskInput {
@@ -74,6 +147,8 @@ function normalizeJobId(payload: unknown): string {
   }
   throw new Error('dispatch response missing job id');
 }
+
+const completedRuns = new Map<string, DispatchPollResult>();
 
 function normalizePollResult(payload: unknown): DispatchPollResult {
   const record = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
@@ -100,7 +175,59 @@ function normalizePollResult(payload: unknown): DispatchPollResult {
               : 1,
         }
       : null,
+    dispatch: typeof record.dispatch === 'object' && record.dispatch ? record.dispatch as Record<string, unknown> : null,
   };
+}
+
+function normalizeChatCompletion(input: SubmitTaskInput, payload: unknown): DispatchPollResult {
+  const record = payload && typeof payload === 'object' ? payload as Record<string, any> : {};
+  const choice = Array.isArray(record.choices) ? record.choices[0] : null;
+  const content = choice?.message?.content;
+  const dispatch = record.x_dispatch && typeof record.x_dispatch === 'object' ? record.x_dispatch : {};
+  const status = typeof dispatch.status === 'string' ? dispatch.status : 'done';
+  const failed = status.includes('no_available_surface') || status.startsWith('exec_error');
+  return {
+    status: failed ? 'failed' : 'done',
+    output: typeof content === 'string' ? content : JSON.stringify(payload, null, 2),
+    error: failed ? status : undefined,
+    exitCode: failed ? 1 : 0,
+    surface: typeof dispatch.chosen_surface === 'string' ? dispatch.chosen_surface : null,
+    model: typeof dispatch.chosen_model === 'string' ? dispatch.chosen_model : typeof record.model === 'string' ? record.model : null,
+    latencyMs: typeof dispatch.latency_ms === 'number' ? dispatch.latency_ms : null,
+    verification: {
+      lint: !failed,
+      build: !failed,
+      exitCode: failed ? 1 : 0,
+    },
+    dispatch,
+  };
+}
+
+function buildChatRequest(input: SubmitTaskInput) {
+  const messages = [
+    {
+      role: 'user',
+      content: input.prompt,
+    },
+  ];
+  const body: Record<string, unknown> = {
+    model: 'dispatch-auto',
+    messages,
+    max_tokens: 2048,
+  };
+  if (input.repo) body.repo = input.repo;
+  if (input.dryRun) body.dry_run = true;
+  if (input.routingIntent) body.routing_intent = input.routingIntent;
+  if (input.workflowId || input.workItemId || input.trigger || input.command) {
+    body.metadata = {
+      ...(input.routingIntent ?? {}),
+      workflowId: input.workflowId,
+      workItemId: input.workItemId,
+      trigger: input.trigger,
+      command: input.command,
+    };
+  }
+  return body;
 }
 
 export async function fetchDispatchHealth(): Promise<DispatchHealth> {
@@ -115,23 +242,61 @@ export async function fetchDispatchSurfaces(): Promise<{ surfaces: DispatchSurfa
   return response.json();
 }
 
+export async function fetchDispatchRegistry(): Promise<{ models: DispatchRegistryModel[] }> {
+  const response = await fetch(`${DISPATCH_URL}/registry`);
+  if (!response.ok) throw new Error(`dispatch registry ${response.status}`);
+  return response.json();
+}
+
+export async function fetchDispatchRegistryStatus(): Promise<{ models: DispatchRegistryModel[] }> {
+  const response = await fetch(`${DISPATCH_URL}/registry/status`);
+  if (!response.ok) throw new Error(`dispatch registry status ${response.status}`);
+  return response.json();
+}
+
+export async function fetchDispatchVerificationJobs(): Promise<{ jobs: DispatchVerificationJob[] }> {
+  const response = await fetch(`${DISPATCH_URL}/verification/jobs`);
+  if (!response.ok) throw new Error(`dispatch verification jobs ${response.status}`);
+  return response.json();
+}
+
 export async function fetchDispatchDecisions(): Promise<{ decisions: DispatchDecision[] }> {
   const response = await fetch(`${DISPATCH_URL}/decisions`);
   if (!response.ok) throw new Error(`dispatch ${response.status}`);
   return response.json();
 }
 
-export async function submitTask(input: SubmitTaskInput): Promise<DispatchJob> {
-  const response = await fetch(DISPATCH_URL, {
+export async function runDispatchDryRun(input: {
+  prompt: string;
+  routingIntent?: Record<string, unknown>;
+}): Promise<DispatchDryRunResult> {
+  const response = await fetch(`${DISPATCH_URL}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      model: 'dispatch-auto',
+      messages: [{ role: 'user', content: input.prompt }],
+      dry_run: true,
+      routing_intent: input.routingIntent,
+    }),
+  });
+  if (!response.ok) throw new Error(`dispatch dry-run ${response.status}`);
+  return response.json();
+}
+
+export async function submitTask(input: SubmitTaskInput): Promise<DispatchJob> {
+  const jobId = `dispatch-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const response = await fetch(`${DISPATCH_URL}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildChatRequest(input)),
   });
   if (!response.ok) throw new Error(`dispatch submit ${response.status}`);
   const payload = await response.json();
+  completedRuns.set(jobId, normalizeChatCompletion(input, payload));
   return {
-    id: normalizeJobId(payload),
-    status: (payload?.status === 'queued' || payload?.status === 'running' || payload?.status === 'done' || payload?.status === 'failed') ? payload.status : 'queued',
+    id: jobId,
+    status: completedRuns.get(jobId)?.status ?? 'done',
     repo: input.repo,
     command: input.command,
     prompt: input.prompt,
@@ -144,6 +309,8 @@ export async function createWorkflowRun(input: CreateWorkflowRunInput): Promise<
 }
 
 export async function pollTask(id: string): Promise<DispatchPollResult> {
+  const completed = completedRuns.get(id);
+  if (completed) return completed;
   const response = await fetch(`${DISPATCH_URL}/poll/${encodeURIComponent(id)}`);
   if (!response.ok) throw new Error(`dispatch poll ${response.status}`);
   return normalizePollResult(await response.json());

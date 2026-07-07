@@ -1,6 +1,6 @@
 # DISPATCH — Agent Handoff Log
 
-Purpose: let any agent (Codex, a fresh Claude session, a Hermes agent) continue the DISPATCH build without the originating conversation. Pairs with **`docs/FORGE_NATIVE_EXECUTION_PLAN.md`** (the lean FORGE-native roadmap — start here for overall architecture), `docs/DISPATCH_BUILD_PLAN.md` (DISPATCH routing phases), and `dispatch/dispatch.config.yaml` (the routing policy). Last updated 2026-07-05.
+Purpose: let any agent (Codex, a fresh Claude session, a Hermes agent) continue the DISPATCH build without the originating conversation. Pairs with **`docs/FORGE_NATIVE_EXECUTION_PLAN.md`** (the lean FORGE-native roadmap — start here for overall architecture), `docs/DISPATCH_BUILD_PLAN.md` (DISPATCH routing phases), and `dispatch/dispatch.config.yaml` (the routing policy). Last updated 2026-07-06.
 
 **Architecture (critical path):** Telegram + Command Center → Hermes FORGE agents → DISPATCH → Ollama/NIM/OpenRouter/Codex/Claude Code/Cursor → Convex log → Command Center visibility. See `docs/FORGE_NATIVE_EXECUTION_PLAN.md` for phases A–F and the immediate checklist.
 
@@ -8,7 +8,7 @@ Purpose: let any agent (Codex, a fresh Claude session, a Hermes agent) continue 
 
 ## TL;DR state
 
-DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an OpenAI-compatible service. It classifies a task, walks a ranked tier chain, checks live availability, routes to the best surface (free-local Ollama, subscription CLIs, or free API tiers), and logs every decision. It is reachable as a drop-in OpenAI endpoint. Not yet done: the visible panel (Phase 2/6), phone intake (5), overnight loop (7), and the fleet-delegation integration.
+DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an OpenAI-compatible service. It classifies a task, walks a ranked tier chain, checks live availability, routes to the best surface (free-local Ollama, subscription CLIs, or free API tiers), and logs every decision. It is reachable as a drop-in OpenAI endpoint. UI/front-end work uses the **`execution_ui_design`** tier: VAEL sets direction first, Gemini 3.5 Flash implements, Gemini 3.1 Pro Preview (Cursor fallback) verifies compliance, VAEL signs off on high-stakes UI. Not yet done: the visible panel (Phase 2/6), phone intake (5), overnight loop (7), and the fleet-delegation integration.
 
 ## Infrastructure map (all on the Abuja LAN; Tailscale for remote)
 
@@ -16,7 +16,7 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
   - Ollama on `:11434` (bound 0.0.0.0). Models on external APFS SSD at `Forge Core/.ollama/models`. `qwen2.5-coder:14b` present. `gemma4:12b` NOT installed (vision tier shows no_available_surface).
   - Mac executor on `:4100` — token-authed HTTP, runs `claude -p` / `codex exec` / `cursor-agent -p`. Code: `~/.dispatch-executor/executor.py` (internal disk). Started via nohup. Token: `~/.dispatch-executor/token` (600).
   - CLIs: `claude` (~/.local/bin), `codex` (~/.npm-global/bin), `cursor-agent` (~/.local/bin). All confirmed headless.
-  - Hermes fleet (sage/edge/ink/kern/vael live; scout/bridge idle) runs via nohup (launchd broken post-reformat — needs Full Disk Access on the APFS volume). Do NOT rely on the launchd services until that's fixed.
+  - Hermes fleet (sage/edge/ink/kern/vael live; scout idle) runs via nohup (launchd broken post-reformat — needs Full Disk Access on the APFS volume). Do NOT rely on the launchd services until that's fixed.
 - **Homelab Dell (`forge-node-01`, 192.168.1.100, root via SSH/Tailscale)** — Proxmox.
   - **LXC 101 `dispatch-litellm` (192.168.1.178, static lease)** — the DISPATCH host.
     - `litellm` systemd service on `:4000` — OpenAI API gateway, fallback across Ollama/NIM/OpenRouter. Config `/opt/litellm/config.yaml`, keys `/opt/litellm/litellm.env` (600).
@@ -58,6 +58,8 @@ DISPATCH's routing brain is built and running. Phases 0, 1, 3, 4 done, plus an O
 4. **Ollama availability quirk.** The router's `ollama_has()` checks the manifest (`/api/tags`), which can report "up" while a blob is incomplete; LiteLLM's provider fallback covers the gap. If Ollama is chosen but `served_by` shows NIM, that's the two-layer fallback working, not a bug.
 5. **Storage:** SSD is APFS now (was exFAT; that round-trip corrupted the qwen blob once — re-pulled). Media lives on the homelab `tank`. Mac internal disk is tight; keep new data on the SSD or homelab.
 6. **`convex/` and `api/` are LOCAL-ONLY** — not on GitHub `origin/main` (0 files tracked there), not gitignored. The Convex backend (`convex/agents.ts`, `convex/schema.ts`) and `api/` exist only on this disk. **Commit them to GitHub** so the backend isn't a single point of failure. Our `dispatch/` and `docs/` are also untracked.
+7. **VAEL-first UI/design gate (`execution_ui_design` tier).** UI/front-end tasks (UI keywords + explicit implementation intent: implement/build/code/component/tailwind/css/layout) route to tier `execution_ui_design` in `dispatch/dispatch.config.yaml`, not `execution_routine`. **Planning/doc/architecture requests win first:** updating a plan, doc, ADR, spec, or handoff that mentions UI/design stays `planning` — see `_is_planning_only_request()` in `dispatch_router.py`. Chain: **VAEL** `design_authority` (before implementation) → **Gemini 3.5 Flash** via `gemini-cli` (primary UI/design code) → **Gemini 3.1 Pro Preview** via `gemini-cli` (preferred design-compliance verifier) → **Cursor** `composer-2.5` (verifier fallback) → **VAEL** `final_design_approval` when `high_stakes`. Gemini CLI is reserved for UI/design planning and UI/design code only — do not route backend logic, infrastructure, or refactor work through Gemini. Verifiers check compliance with VAEL's brief; they do not override VAEL's taste or brand decisions. Router: `dispatch/router/dispatch_router.py` classifies `execution_ui_design`; primary Gemini output always passes through design-compliance verification.
+8. **Typed task packet before keyword guessing.** Future DISPATCH calls should pass explicit routing intent whenever possible: `task_type`, `domain`, `owner_agent`, `authority_agent`, `execution_role`, `target_tier`, `repo`/`cwd`, `sensitivity`, and `verification_policy`. This metadata should override raw keyword classification; keyword detection is the fallback for bare prompts only. Examples: planning/doc update → `task_type=planning`, `target_tier=planning`, `authority_agent=sage`; UI implementation → `task_type=implementation`, `domain=ui_design`, `target_tier=execution_ui_design`, `authority_agent=vael`; infrastructure → `domain=infra`, `owner_agent=kern`, `authority_agent=kern`.
 
 ## Frontend state (just synced 2026-07-05)
 

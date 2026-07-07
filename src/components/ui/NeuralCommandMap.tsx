@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motio
 import { cn } from '@/src/lib/utils';
 import { Agent, Relationship, AGENTS, RELATIONSHIPS, AgentTier, AgentStatus } from '@/src/types/agents';
 import { ForgeIcon } from './ForgeIcon';
+import { createWorkItem } from '@/src/lib/useConvex';
 
 /**
  * NEURAL COMMAND MAP & CHAT SYSTEM
@@ -60,11 +61,10 @@ const TIER_SIZES: Record<AgentTier, number> = {
 
 // Default positions (relative to 1000x1000 canvas)
 const INITIAL_POSITIONS: Record<string, { x: number; y: number }> = {
-  miguel: { x: 500, y: 450 },
+  sage: { x: 500, y: 450 },
   vael: { x: 300, y: 250 },
   kern: { x: 700, y: 250 },
   edge: { x: 250, y: 650 },
-  bridge: { x: 750, y: 650 },
   tester: { x: 500, y: 680 },
   // Pipeline cluster at bottom
   p1: { x: 400, y: 880 },
@@ -186,7 +186,7 @@ const AgentNode = ({
   onClick,
   onDragEnd
 }: any) => {
-  const size = TIER_SIZES[agent.tier] * (agent.id === 'miguel' ? 1.2 : 1);
+  const size = TIER_SIZES[agent.tier] * (agent.id === 'sage' ? 1.2 : 1);
   const statusColor = STATUS_COLORS[agent.status];
 
   return (
@@ -337,6 +337,38 @@ const AgentNode = ({
   );
 };
 
+type ChatMessage = {
+  id: string;
+  sender: string;
+  text: string;
+  time: string;
+  isAgent: boolean;
+};
+
+const inferDomain = (text: string, channel: string): string => {
+  const lower = text.toLowerCase();
+  if (channel === 'edge' || /\b(trade|trading|futures|bybit|market|entry|position|risk)\b/.test(lower)) return 'trading';
+  if (channel === 'vael' || /\b(ui|ux|design|frontend|brand|layout|component)\b/.test(lower)) return 'ui_design';
+  if (channel === 'kern' || /\b(deploy|lxc|convex|schema|router|systemd|infra|server|database)\b/.test(lower)) return 'infrastructure';
+  return 'orchestration';
+};
+
+const ownerForChannel = (channel: string, domain: string): string => {
+  if (['kern', 'vael', 'edge'].includes(channel)) return channel;
+  if (domain === 'ui_design') return 'vael';
+  if (domain === 'trading') return 'edge';
+  if (domain === 'infrastructure') return 'kern';
+  return 'SAGE';
+};
+
+const priorityFromText = (text: string): 'low' | 'medium' | 'high' | 'critical' => {
+  const lower = text.toLowerCase();
+  if (lower.includes('#critical') || lower.includes('urgent')) return 'critical';
+  if (lower.includes('#high')) return 'high';
+  if (lower.includes('#low')) return 'low';
+  return 'medium';
+};
+
 // --- Main Component ---
 
 export const NeuralCommandMap: React.FC = () => {
@@ -344,21 +376,18 @@ export const NeuralCommandMap: React.FC = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<'map' | 'roster' | 'chat'>('map');
-  const [activeChannel, setActiveChannel] = useState<string>('network');
+  const activeChannel = 'sage';
   const [isTyping, setIsTyping] = useState(false);
-  const [showChatSidebar, setShowChatSidebar] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
   const [showBlockedPolicy, setShowBlockedPolicy] = useState(false);
   const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState<Record<string, Array<{ id: string; sender: string; text: string; time: string; isAgent: boolean }>>>({
-    network: [
-      { id: '1', sender: 'MIGUEL', text: 'Neural network stable. All agents reporting nominal status.', time: '13:45', isAgent: true },
-      { id: '2', sender: 'VAEL', text: 'Security audit complete. No breaches detected.', time: '13:48', isAgent: true },
-    ],
-    miguel: [
-      { id: 'm1', sender: 'MIGUEL', text: 'Operator, I am standing by for strategic directives.', time: '12:00', isAgent: true }
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({
+    sage: [
+      { id: '1', sender: 'SAGE', text: 'Command intake online. Messages here become work items for orchestration.', time: '13:45', isAgent: true },
+      { id: '2', sender: 'SYSTEM', text: 'Telegram and web chat both route through SAGE before DISPATCH execution.', time: '13:48', isAgent: true },
+      { id: 's1', sender: 'SAGE', text: 'Operator, I am standing by for strategic directives.', time: '12:00', isAgent: true }
     ]
   });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -370,13 +399,14 @@ export const NeuralCommandMap: React.FC = () => {
     }
   }, [view, messages, activeChannel]);
 
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
+  const handleSendMessage = async () => {
+    const prompt = chatInput.trim();
+    if (!prompt) return;
     const channel = activeChannel;
     const newMsg = {
       id: Date.now().toString(),
       sender: 'OPERATOR',
-      text: chatInput,
+      text: prompt,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isAgent: false
     };
@@ -388,13 +418,33 @@ export const NeuralCommandMap: React.FC = () => {
     setChatInput('');
     setIsTyping(true);
 
-    // Mock response
-    setTimeout(() => {
-      const senderName = channel === 'network' ? 'MIGUEL' : AGENTS.find(a => a.id === channel)?.name || 'SYSTEM';
+    try {
+      const domain = inferDomain(prompt, channel);
+      const owner = ownerForChannel(channel, domain);
+      const title = prompt.split('\n')[0].slice(0, 110) || 'Command Center intake';
+      const created = await createWorkItem({
+        title,
+        summary: [
+          'Command Center chat intake request.',
+          `Channel: ${channel}`,
+          `Domain: ${domain}`,
+          `Intended owner: ${owner}`,
+          '',
+          prompt,
+        ].join('\n'),
+        status: 'ready',
+        priority: priorityFromText(prompt),
+        orchestrator: 'SAGE',
+        owner,
+        executor: 'DISPATCH',
+        surface: 'dispatch-auto',
+        verificationStatus: 'not_started',
+        verificationSummary: 'Created from Command Center chat; awaiting SAGE orchestration.',
+      });
       const response = {
         id: (Date.now() + 1).toString(),
-        sender: senderName,
-        text: channel === 'network' ? 'Acknowledged. Broadcasting to all nodes.' : `Direct directive received. Executing ${chatInput.split(' ')[0]}...`,
+        sender: 'SAGE',
+        text: `Queued for SAGE: ${created.workId}\nOwner: ${owner}\nSurface: dispatch-auto`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isAgent: true
       };
@@ -402,8 +452,21 @@ export const NeuralCommandMap: React.FC = () => {
         ...prev,
         [channel]: [...(prev[channel] || []), response]
       }));
+    } catch (err) {
+      const response = {
+        id: (Date.now() + 1).toString(),
+        sender: 'SYSTEM',
+        text: err instanceof Error ? err.message : 'Command Center intake failed.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isAgent: true
+      };
+      setMessages(prev => ({
+        ...prev,
+        [channel]: [...(prev[channel] || []), response]
+      }));
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   // Handle window resize to prevent "not responding" feel if layout shifts
@@ -532,41 +595,6 @@ export const NeuralCommandMap: React.FC = () => {
           </button>
         </div>
       </header>
-
-      {/* Status Strip - Only visible in Chat View */}
-      {view === 'chat' && (
-        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between z-20 bg-surface-base/50 overflow-x-auto no-scrollbar shrink-0">
-          <div className="flex gap-8 shrink-0">
-            {/* Neural Network Channel */}
-            <div 
-              className={cn(
-                "flex items-center gap-3 group cursor-pointer border-r border-surface-border pr-8",
-                activeChannel === 'network' ? "text-emerald-accent" : "text-text-secondary"
-              )} 
-              onClick={() => setActiveChannel('network')}
-            >
-              <div className={cn("w-2 h-2 rounded-full animate-pulse bg-emerald-accent")} />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold uppercase group-hover:text-emerald-accent transition-colors leading-none">Neural Network</span>
-                <span className="text-[8px] font-mono uppercase tracking-tighter mt-0.5 opacity-70">Broadcast</span>
-              </div>
-            </div>
-
-            {/* Individual Agents */}
-            {AGENTS.filter(a => a.tier !== 'pipeline').map(agent => (
-              <div key={agent.id} className="flex items-center gap-3 group cursor-pointer" onClick={() => setActiveChannel(agent.id)}>
-                <div className={cn("w-2 h-2 rounded-full animate-pulse", STATUS_BG_CLASSES[agent.status])} />
-                <div className="flex flex-col">
-                  <span className={cn("text-[10px] font-bold uppercase group-hover:text-emerald-accent transition-colors leading-none", activeChannel === agent.id ? "text-emerald-accent" : "text-text-secondary")}>{agent.name}</span>
-                  <span className={cn("text-[8px] font-mono uppercase tracking-tighter mt-0.5", STATUS_TEXT_CLASSES[agent.status])}>
-                    {agent.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="flex-1 relative flex min-h-0 min-w-0">
         <AnimatePresence mode="wait">
@@ -712,7 +740,7 @@ export const NeuralCommandMap: React.FC = () => {
                       <h3 className="font-bold uppercase tracking-widest text-label-md">Security Policy</h3>
                     </div>
                     <p className="text-text-secondary text-label-sm leading-relaxed">
-                      EDGE and BRIDGE are strictly forbidden from direct communication. All synchronization must be routed through MIGUEL to ensure risk compliance.
+                      EDGE trading actions route through SAGE and require KERN review for infrastructure-impacting changes.
                     </p>
                     <button 
                       onClick={() => setShowBlockedPolicy(false)}
@@ -775,121 +803,35 @@ export const NeuralCommandMap: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
               className="flex-1 flex flex-col min-h-0 bg-surface-base relative"
             >
-              {/* Chat Sidebar - Bot Intelligence Tools */}
-              <AnimatePresence>
-                {(showChatSidebar || true) && (
-                  <motion.div 
-                    initial={false}
-                    animate={{ x: 0 }}
-                    className={cn(
-                      "absolute left-0 top-0 bottom-0 w-64 border-r border-surface-border bg-surface-raised z-30 flex flex-col shrink-0 transition-transform duration-300 lg:translate-x-0",
-                      !showChatSidebar && "-translate-x-full lg:translate-x-0"
-                    )}
-                  >
-                    <div className="p-4 border-b border-surface-border flex items-center justify-between">
-                      <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Intelligence Tools</h3>
-                      <button onClick={() => setShowChatSidebar(false)} className="lg:hidden p-1 text-text-muted hover:text-text-primary">
-                        <ForgeIcon name="close-circle" size="md" />
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar">
-                      {activeChannel !== 'network' ? (
-                        <div className="px-2 py-2">
-                          <div className="flex items-center gap-3 p-3 mb-4 bg-surface-base border border-surface-border rounded-xl">
-                            <div className="text-2xl">{AGENTS.find(a => a.id === activeChannel)?.emoji}</div>
-                            <div className="min-w-0">
-                              <div className="text-label-sm font-bold text-text-primary truncate">{AGENTS.find(a => a.id === activeChannel)?.name}</div>
-                              <div className="text-[9px] font-mono text-text-muted truncate uppercase">{AGENTS.find(a => a.id === activeChannel)?.role}</div>
-                            </div>
-                          </div>
-
-                          <h3 className="text-[9px] font-bold text-text-muted uppercase tracking-widest mb-2 px-1">Bot Internals</h3>
-                          <div className="space-y-1">
-                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <ForgeIcon name="document-text" size="sm" className="text-emerald-accent" />
-                              <span className="text-label-sm font-medium">Open Logs</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <ForgeIcon name="cpu" size="sm" className="text-emerald-accent" />
-                              <span className="text-label-sm font-medium">Memory Browser</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <ForgeIcon name="calendar" size="sm" className="text-emerald-accent" />
-                              <span className="text-label-sm font-medium">Schedules</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all text-left">
-                              <ForgeIcon name="settings" size="sm" className="text-emerald-accent" />
-                              <span className="text-label-sm font-medium">Bot Configuration</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-6 text-center">
-                          <ForgeIcon name="users-group-two-rounded" size="xl" className="mx-auto text-text-muted mb-4 opacity-20" />
-                          <p className="text-[10px] text-text-muted uppercase tracking-widest leading-relaxed">
-                            Neural Network Broadcast Mode Active. Select an agent to access internal tools.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Mobile Sidebar Overlay */}
-              {showChatSidebar && (
-                <div 
-                  className="absolute inset-0 bg-black/50 z-20 lg:hidden" 
-                  onClick={() => setShowChatSidebar(false)}
-                />
-              )}
-
-              <div className="flex-1 flex flex-col min-h-0 min-w-0 lg:ml-64">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0">
                 {/* Chat Header */}
                 <div className="px-4 sm:px-6 py-3 border-b border-surface-border bg-surface-raised/20 flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
-                    <button 
-                      onClick={() => setShowChatSidebar(true)}
-                      className="lg:hidden p-2 -ml-2 text-text-muted hover:text-text-primary"
-                    >
-                      <ForgeIcon name="hamburger-menu" size="md" />
-                    </button>
                     <div className="text-xl shrink-0">
-                      {activeChannel === 'network' ? <ForgeIcon name="users-group-two-rounded" className="text-emerald-accent" /> : AGENTS.find(a => a.id === activeChannel)?.emoji}
+                      <ForgeIcon name="chat-round-dots" className="text-emerald-accent" />
                     </div>
-                    <div 
-                      className="min-w-0 cursor-pointer group"
-                      onClick={() => activeChannel !== 'network' && setSelectedId(activeChannel)}
-                    >
-                      <h3 className="text-label-md font-bold text-text-primary uppercase tracking-wider truncate group-hover:text-emerald-accent transition-colors">
-                        {activeChannel === 'network' ? 'Neural Network' : AGENTS.find(a => a.id === activeChannel)?.name}
+                    <div className="min-w-0">
+                      <h3 className="text-label-md font-bold text-text-primary uppercase tracking-wider truncate">
+                        SAGE Intake
                       </h3>
                       <div className="flex items-center gap-2">
-                        <div className={cn("w-1 h-1 rounded-full animate-pulse", activeChannel === 'network' ? "bg-status-healthy" : STATUS_BG_CLASSES[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'])} />
-                        <span className={cn("text-[9px] font-mono uppercase tracking-tighter truncate", activeChannel === 'network' ? "text-status-healthy" : STATUS_TEXT_CLASSES[AGENTS.find(a => a.id === activeChannel)?.status || 'neutral'])}>
-                          {activeChannel === 'network' ? 'Operational' : AGENTS.find(a => a.id === activeChannel)?.status}
+                        <div className="w-1 h-1 rounded-full animate-pulse bg-status-healthy" />
+                        <span className="text-[9px] font-mono uppercase tracking-tighter truncate text-status-healthy">
+                          Operational
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 sm:gap-6 shrink-0 ml-auto sm:ml-0">
-                    {activeChannel !== 'network' && (
-                      <div className="hidden xs:flex items-center gap-4 sm:gap-6 mr-2">
-                        <div className="flex flex-col items-end">
-                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Runtime</span>
-                          <span className="text-[9px] text-text-mono font-mono mt-0.5">42h</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Heartbeat</span>
-                          <span className="text-[9px] text-text-mono font-mono mt-0.5">14s</span>
-                        </div>
+                    <div className="hidden xs:flex items-center gap-4 sm:gap-6 mr-2">
+                      <div className="flex flex-col items-end">
+                        <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Route</span>
+                        <span className="text-[9px] text-text-mono font-mono mt-0.5">Convex</span>
                       </div>
-                    )}
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <button className="hidden sm:block p-2 text-text-muted hover:text-text-primary transition-colors"><ForgeIcon name="videocamera-record" size="md" /></button>
-                      <button className="p-2 text-text-muted hover:text-text-primary transition-colors lg:hidden" onClick={() => setShowChatSidebar(true)}>
-                        <ForgeIcon name="settings" size="md" />
-                      </button>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[7px] text-text-muted uppercase font-mono leading-none">Executor</span>
+                        <span className="text-[9px] text-text-mono font-mono mt-0.5">DISPATCH</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -920,7 +862,7 @@ export const NeuralCommandMap: React.FC = () => {
                   {isTyping && (
                     <div className="self-start flex flex-col">
                       <div className="text-[10px] font-bold text-emerald-accent uppercase tracking-widest mb-1.5">
-                        {activeChannel === 'network' ? 'MIGUEL' : AGENTS.find(a => a.id === activeChannel)?.name} is typing...
+                        SAGE is queuing...
                       </div>
                       <div className="flex gap-1 p-2 bg-surface-raised rounded-lg border border-surface-border">
                         <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 rounded-full bg-emerald-accent" />
@@ -954,12 +896,14 @@ export const NeuralCommandMap: React.FC = () => {
                       type="text" 
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                      placeholder={`Message ${activeChannel === 'network' ? 'Neural Network' : AGENTS.find(a => a.id === activeChannel)?.name}...`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void handleSendMessage();
+                      }}
+                      placeholder="Message SAGE..."
                       className="flex-1 bg-surface-base border border-surface-border rounded-xl pl-12 pr-5 py-3 text-text-primary text-label-sm focus:outline-none focus:border-emerald-accent focus:ring-1 focus:ring-emerald-accent/20 transition-all"
                     />
                     <button 
-                      onClick={handleSendMessage}
+                      onClick={() => void handleSendMessage()}
                       className="px-4 sm:px-6 bg-emerald-accent text-text-inverse rounded-xl font-bold text-label-sm hover:bg-emerald-mid transition-all flex items-center gap-2 shadow-lg shadow-emerald-accent/10 active:scale-95"
                     >
                       <ForgeIcon name="send" size="md" />

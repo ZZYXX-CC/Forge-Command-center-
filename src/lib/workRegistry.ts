@@ -22,6 +22,7 @@ export interface WorkRegistryItem {
   blocker?: string;
   verificationStatus: VerificationStatus;
   verificationSummary?: string;
+  dryRun?: boolean;
   createdAt: number;
   updatedAt: number;
   dueAt?: number;
@@ -58,17 +59,67 @@ export interface ExecutorRun {
 
 export interface RoutingDecision {
   _id: string;
+  sourceId?: string;
   workId?: string;
   task: string;
   category: string;
   complexity: string;
+  urgency?: string;
+  confidence?: string;
   chosenSurface?: string;
   chosenModel?: string;
   via?: string;
+  servedBy?: string;
   status: string;
   latencyMs?: number;
   consideredJson?: string;
+  classificationJson?: string;
+  classifierModel?: string;
+  whyLogJson?: string;
+  rejectionsJson?: string;
+  verificationJson?: string;
+  quotaSnapshotJson?: string;
+  circuitSnapshotJson?: string;
   decidedAt: number;
+}
+
+export interface RoutingDecisionInput {
+  sourceId?: string;
+  workId?: string;
+  task: string;
+  category: string;
+  complexity: string;
+  urgency?: string;
+  confidence?: string;
+  chosenSurface?: string;
+  chosenModel?: string;
+  via?: string;
+  servedBy?: string;
+  status: string;
+  latencyMs?: number;
+  consideredJson?: string;
+  classificationJson?: string;
+  classifierModel?: string;
+  whyLogJson?: string;
+  rejectionsJson?: string;
+  verificationJson?: string;
+  quotaSnapshotJson?: string;
+  circuitSnapshotJson?: string;
+}
+
+export type VerificationRunState = 'pending' | 'passed' | 'failed' | 'needs_review' | 'verifier_unavailable' | 'timeout';
+
+export interface VerificationRunInput {
+  workId?: string;
+  runId: string;
+  routingDecisionId?: string;
+  verifierSurface?: string;
+  verifierModel?: string;
+  state: VerificationRunState;
+  summary?: string;
+  attemptsJson?: string;
+  startedAt: number;
+  completedAt?: number;
 }
 
 export interface WorkRegistryDetail {
@@ -95,6 +146,7 @@ export interface CreateWorkItemInput {
   blocker?: string;
   verificationStatus?: VerificationStatus;
   verificationSummary?: string;
+  dryRun?: boolean;
   dueAt?: number;
 }
 

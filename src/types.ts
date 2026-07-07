@@ -378,6 +378,7 @@ export interface DispatchPollResult {
   model?: string | null;
   latencyMs?: number | null;
   verification?: WorkflowVerification | null;
+  dispatch?: Record<string, unknown> | null;
 }
 
 // --- Clients ---

@@ -146,6 +146,7 @@ export default defineSchema({
       v.literal("waived"),
     ),
     verificationSummary: v.optional(v.string()),
+    dryRun: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
     dueAt: v.optional(v.number()),
@@ -167,21 +168,117 @@ export default defineSchema({
     .index("by_occurredAt", ["occurredAt"]),
 
   routingDecisions: defineTable({
+    sourceId: v.optional(v.string()),
     workId: v.optional(v.string()),
     task: v.string(),
     category: v.string(),
     complexity: v.string(),
+    urgency: v.optional(v.string()),
+    confidence: v.optional(v.string()),
     chosenSurface: v.optional(v.string()),
     chosenModel: v.optional(v.string()),
     via: v.optional(v.string()),
+    servedBy: v.optional(v.string()),
     status: v.string(),
     latencyMs: v.optional(v.number()),
     consideredJson: v.optional(v.string()),
+    classificationJson: v.optional(v.string()),
+    classifierModel: v.optional(v.string()),
+    whyLogJson: v.optional(v.string()),
+    rejectionsJson: v.optional(v.string()),
+    verificationJson: v.optional(v.string()),
+    quotaSnapshotJson: v.optional(v.string()),
+    circuitSnapshotJson: v.optional(v.string()),
     decidedAt: v.number(),
   })
+    .index("by_sourceId", ["sourceId"])
     .index("by_workId_decidedAt", ["workId", "decidedAt"])
     .index("by_decidedAt", ["decidedAt"])
     .index("by_chosenSurface", ["chosenSurface"]),
+
+  modelRegistry: defineTable({
+    registryId: v.string(),
+    provider: v.string(),
+    surface: v.string(),
+    model: v.string(),
+    capabilitiesJson: v.string(),
+    authorityRolesJson: v.string(),
+    allowedDomainsJson: v.optional(v.string()),
+    tier: v.string(),
+    trustLevel: v.optional(v.string()),
+    quotaJson: v.optional(v.string()),
+    costJson: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_registryId", ["registryId"])
+    .index("by_surface", ["surface"])
+    .index("by_tier", ["tier"]),
+
+  modelRuntimeStatus: defineTable({
+    registryId: v.string(),
+    surface: v.string(),
+    model: v.string(),
+    health: v.string(),
+    available: v.boolean(),
+    via: v.optional(v.string()),
+    quotaUsed: v.optional(v.number()),
+    quotaRemaining: v.optional(v.number()),
+    circuitState: v.string(),
+    lastSuccess: v.optional(v.number()),
+    lastFailure: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    checkedAt: v.number(),
+  })
+    .index("by_registryId", ["registryId"])
+    .index("by_surface", ["surface"])
+    .index("by_checkedAt", ["checkedAt"]),
+
+  modelQuotaEvents: defineTable({
+    registryId: v.string(),
+    surface: v.string(),
+    eventType: v.string(),
+    used: v.optional(v.number()),
+    remaining: v.optional(v.number()),
+    resetAt: v.optional(v.number()),
+    detail: v.optional(v.string()),
+    occurredAt: v.number(),
+  })
+    .index("by_registryId_occurredAt", ["registryId", "occurredAt"])
+    .index("by_occurredAt", ["occurredAt"]),
+
+  verificationRuns: defineTable({
+    workId: v.optional(v.string()),
+    runId: v.string(),
+    routingDecisionId: v.optional(v.string()),
+    verifierSurface: v.optional(v.string()),
+    verifierModel: v.optional(v.string()),
+    state: v.union(
+      v.literal("pending"),
+      v.literal("passed"),
+      v.literal("failed"),
+      v.literal("needs_review"),
+      v.literal("verifier_unavailable"),
+      v.literal("timeout"),
+    ),
+    summary: v.optional(v.string()),
+    attemptsJson: v.optional(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_runId", ["runId"])
+    .index("by_workId_startedAt", ["workId", "startedAt"]),
+
+  routingWhyLogs: defineTable({
+    workId: v.optional(v.string()),
+    routingDecisionId: v.optional(v.string()),
+    sourceId: v.optional(v.string()),
+    task: v.optional(v.string()),
+    whyLogJson: v.string(),
+    rejectionsJson: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_workId_createdAt", ["workId", "createdAt"])
+    .index("by_sourceId", ["sourceId"]),
 
   executorRuns: defineTable({
     workId: v.optional(v.string()),

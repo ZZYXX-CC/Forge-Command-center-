@@ -19,7 +19,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-HOME = Path.home()
+MAC_HOME = Path(os.environ.get("DISPATCH_MAC_HOME", "/Users/ichris"))
+HOME = MAC_HOME if MAC_HOME.exists() else Path.home()
 CONF = HOME / ".dispatch-executor"
 CONF.mkdir(exist_ok=True)
 PORT = int(os.environ.get("EXECUTOR_PORT", "4100"))
@@ -36,6 +37,7 @@ SUPPORTED_SURFACES = [
     "gemini-cli",
     "hermes-kern-gpt55",
     "kern-hermes-gpt55",
+    "hermes-vael",
 ]
 
 # Ensure the CLIs are on PATH regardless of the launchd/nohup environment.
@@ -52,25 +54,49 @@ def _codex_model(model: str | None) -> str:
     return model
 
 
+def _resolved_model(surface: str, model: str | None) -> str | None:
+    if surface in ("codex", "codex-cli-gpt55"):
+        return _codex_model(model)
+    if surface == "gemini-cli":
+        return model or "gemini-3.5-flash"
+    if surface == "claude-code":
+        return model or "sonnet"
+    if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55"):
+        return model or "gpt-5.5"
+    if surface == "hermes-vael":
+        return model or "vael"
+    return model
+
+
 def _login_shell(cmd: list[str]) -> list[str]:
     """Run subscription CLIs through Samuel's login shell so OAuth/keychain env matches Terminal."""
     return ["/bin/zsh", "-lc", " ".join(shlex.quote(part) for part in cmd)]
 
 
+def _run_env(surface: str) -> dict:
+    env = os.environ.copy()
+    if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55", "hermes-vael"):
+        env.update({"HOME": str(HOME), "USER": HOME.name, "LOGNAME": HOME.name})
+    return env
+
+
 def build_cmd(surface: str, prompt: str, model: str | None):
+    resolved_model = _resolved_model(surface, model)
     if surface == "claude-code":
-        return _login_shell(["claude", "-p", prompt, "--model", model or "sonnet", "--output-format", "text"])
+        return _login_shell(["claude", "-p", prompt, "--model", resolved_model or "sonnet", "--output-format", "text"])
     if surface in ("codex", "codex-cli-gpt55"):
         return _login_shell(["codex", "exec", "--skip-git-repo-check", "--sandbox", "workspace-write",
-                             "-m", _codex_model(model), prompt])
+                             "-m", resolved_model or "gpt-5.5", prompt])
     if surface in ("cursor", "cursor-pinned"):
         return _login_shell(["cursor-agent", "--trust", "-p", prompt, "--output-format", "text"])
     if surface == "gemini-cli":
-        return _login_shell(["gemini", "--prompt", prompt, "--approval-mode", "plan",
-                             "--output-format", "text", "--model", model or "gemini-2.5-pro"])
+        return _login_shell(["gemini", "--skip-trust", "--prompt", prompt, "--approval-mode", "plan",
+                             "--output-format", "text", "--model", resolved_model or "gemini-3.5-flash"])
     if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55"):
         return _login_shell(["hermes", "chat", "--profile", "kern", "--provider", "openai-codex",
-                             "--model", model or "gpt-5.5", "--toolsets", "terminal,file,web", "-q", prompt])
+                             "--model", resolved_model or "gpt-5.5", "--toolsets", "terminal,file,web", "-q", prompt])
+    if surface == "hermes-vael":
+        return _login_shell(["hermes", "chat", "--profile", "vael", "--toolsets", "terminal,file,web", "-q", prompt])
     return None
 
 
@@ -92,6 +118,7 @@ def _resolve_cwd(cwd: str | None) -> tuple[str | None, str | None]:
 def run_surface(surface: str, prompt: str, model: str | None, timeout: int = 300,
                 cwd: str | None = None) -> dict:
     cmd = build_cmd(surface, prompt, model)
+    resolved_model = _resolved_model(surface, model)
     if not cmd:
         return {"error": f"unsupported surface: {surface}", "exit_code": -1}
     resolved_cwd, cwd_error = _resolve_cwd(cwd)
@@ -101,10 +128,11 @@ def run_surface(surface: str, prompt: str, model: str | None, timeout: int = 300
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                            stdin=subprocess.DEVNULL,
-                           cwd=resolved_cwd)
+                           cwd=resolved_cwd,
+                           env=_run_env(surface))
         return {"output": (r.stdout or "").strip(), "stderr": (r.stderr or "").strip()[:500],
                 "exit_code": r.returncode, "latency_ms": int((time.time() - t0) * 1000),
-                "surface": surface, "model": model, "cwd": resolved_cwd}
+                "surface": surface, "model": resolved_model, "cwd": resolved_cwd}
     except subprocess.TimeoutExpired:
         return {"error": "timeout", "exit_code": -2, "latency_ms": int((time.time() - t0) * 1000)}
 
