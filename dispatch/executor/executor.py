@@ -39,6 +39,13 @@ SUPPORTED_SURFACES = [
     "kern-hermes-gpt55",
     "hermes-vael",
 ]
+HERMES_ROOT = Path(os.environ.get("HERMES_ROOT", "/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes"))
+HERMES_GATEWAY_AGENTS = [
+    agent.strip()
+    for agent in os.environ.get("HERMES_GATEWAY_AGENTS", "sage,kern").split(",")
+    if agent.strip()
+]
+HERMES_GATEWAY_STALE_SECONDS = int(os.environ.get("HERMES_GATEWAY_STALE_SECONDS", "900"))
 
 # Ensure the CLIs are on PATH regardless of the launchd/nohup environment.
 for _p in [str(HOME / ".local/bin"), str(HOME / ".npm-global/bin"),
@@ -78,6 +85,111 @@ def _run_env(surface: str) -> dict:
     if surface in ("hermes-kern-gpt55", "kern-hermes-gpt55", "hermes-vael"):
         env.update({"HOME": str(HOME), "USER": HOME.name, "LOGNAME": HOME.name})
     return env
+
+
+def _launchctl_service(label: str) -> dict:
+    try:
+        result = subprocess.run(
+            ["launchctl", "print", f"gui/{os.getuid()}/{label}"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except Exception as exc:
+        return {"label": label, "launchd": "unknown", "error": str(exc)}
+    if result.returncode != 0:
+        return {"label": label, "launchd": "missing", "error": (result.stderr or result.stdout).strip()[:240]}
+    info: dict[str, str | int] = {"label": label, "launchd": "loaded"}
+    for raw in result.stdout.splitlines():
+        line = raw.strip()
+        if line.startswith("state =") and "state" not in info:
+            info["state"] = line.split("=", 1)[1].strip()
+        elif line.startswith("pid =") and "pid" not in info:
+            try:
+                info["pid"] = int(line.split("=", 1)[1].strip())
+            except ValueError:
+                pass
+        elif line.startswith("last exit code =") and "last_exit_code" not in info:
+            info["last_exit_code"] = line.split("=", 1)[1].strip()
+        elif line.startswith("run interval =") and "run_interval" not in info:
+            info["run_interval"] = line.split("=", 1)[1].strip()
+    return info
+
+
+def _read_gateway_state(agent: str) -> dict:
+    path = HERMES_ROOT / "profiles" / agent / "gateway_state.json"
+    try:
+        stat = path.stat()
+        data = json.loads(path.read_text(encoding="utf-8"))
+        age_seconds = max(0, int(time.time() - stat.st_mtime))
+        telegram = (data.get("platforms") or {}).get("telegram") or {}
+        return {
+            "path": str(path),
+            "age_seconds": age_seconds,
+            "gateway_state": data.get("gateway_state"),
+            "restart_requested": bool(data.get("restart_requested")),
+            "telegram_state": telegram.get("state"),
+            "telegram_error_code": telegram.get("error_code"),
+            "telegram_error_message": telegram.get("error_message"),
+            "active_agents": data.get("active_agents"),
+        }
+    except FileNotFoundError:
+        return {"path": str(path), "error": "missing"}
+    except Exception as exc:
+        return {"path": str(path), "error": str(exc)}
+
+
+def _gateway_health(agent: str) -> dict:
+    label = f"ai.hermes.gateway-{agent}"
+    launchd = _launchctl_service(label)
+    state = _read_gateway_state(agent)
+    status = "up"
+    reasons: list[str] = []
+    if launchd.get("state") != "running":
+        status = "down"
+        reasons.append(f"launchd_state={launchd.get('state') or launchd.get('launchd')}")
+    if state.get("error"):
+        status = "warn" if status == "up" else status
+        reasons.append(f"state_error={state.get('error')}")
+    elif state.get("restart_requested"):
+        status = "down"
+        reasons.append("restart_requested")
+    elif state.get("gateway_state") not in (None, "running"):
+        status = "down"
+        reasons.append(f"gateway_state={state.get('gateway_state')}")
+    elif state.get("telegram_state") not in (None, "connected"):
+        status = "warn" if status == "up" else status
+        reasons.append(f"telegram_state={state.get('telegram_state')}")
+    elif int(state.get("age_seconds") or 0) > HERMES_GATEWAY_STALE_SECONDS:
+        status = "warn" if status == "up" else status
+        reasons.append(f"stale_state_age={state.get('age_seconds')}")
+    return {
+        "agent": agent,
+        "status": status,
+        "reasons": reasons,
+        "launchd": launchd,
+        "state": state,
+    }
+
+
+def hermes_gateway_health() -> dict:
+    agents = [_gateway_health(agent) for agent in HERMES_GATEWAY_AGENTS]
+    watchdog = _launchctl_service("ai.hermes.gateway-watchdog")
+    down = [agent["agent"] for agent in agents if agent.get("status") == "down"]
+    warn = [agent["agent"] for agent in agents if agent.get("status") == "warn"]
+    return {
+        "status": "degraded" if down else "warn" if warn else "ok",
+        "agents": agents,
+        "watchdog": watchdog,
+        "summary": {
+            "watched_agents": len(agents),
+            "down": down,
+            "warn": warn,
+            "watchdog_loaded": watchdog.get("launchd") == "loaded",
+            "watchdog_interval": watchdog.get("run_interval"),
+            "watchdog_last_exit_code": watchdog.get("last_exit_code"),
+        },
+    }
 
 
 def build_cmd(surface: str, prompt: str, model: str | None):
@@ -148,7 +260,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._send(200, {"status": "ok", "surfaces": SUPPORTED_SURFACES})
+            self._send(200, {
+                "status": "ok",
+                "surfaces": SUPPORTED_SURFACES,
+                "hermes_gateways": hermes_gateway_health(),
+            })
         else:
             self._send(404, {"error": "not found"})
 

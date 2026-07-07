@@ -1,6 +1,6 @@
 # FORGE Fleet Build Progress
 
-Last updated: 2026-07-07 23:56 WAT
+Last updated: 2026-07-08 00:00 WAT
 
 Public dashboard: http://command-center.nuvuestudio.net/
 
@@ -38,6 +38,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 | Mac executor self-healing deploy | Done | `scripts/deploy_mac_executor_local.sh` installs the LaunchAgent plist, bootstraps/kickstarts launchd, validates health, and keeps `:4100` alive with `KeepAlive`. |
 | SAGE/KERN DISPATCH delegation skill | Done | Repo-owned `hermes/skills/devops/dispatch-delegate` is installed into live SAGE and KERN Hermes profiles via `scripts/install_hermes_dispatch_delegate_skill.sh`. |
 | Hermes gateway watchdog | Done | Repo-owned wrapper/watchdog source and LaunchAgent installer keep the active SAGE/KERN gateways launchd-managed and recover dead/bad gateway states. |
+| Gateway health in audit | Done | Mac executor `/health` reports SAGE/KERN gateway/watchdog state; `dispatch-convex-sync` writes the compact summary into `/audit`. |
 
 ## How To Track
 
@@ -96,6 +97,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Validation after refresh-loop patch: Python compile passed for DISPATCH router/service/executor and worker scripts; `npm run lint` and `npm run build` passed.
 - Public status after refresh-loop patch: `http://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200; `litellm`, `dispatch-service`, `dispatch-convex-sync`, `forge-sage-orchestrator`, and Command Center `nginx` are active.
 - Runtime health heartbeat: deployed `dispatch-convex-sync.service` writes `runtime_health_changed` / `runtime_health_heartbeat` events to Convex. Latest deployed loop reported `healthy`, 11 monitored services, 23 registry models, 3 unavailable models, 2 quota-blocked models, and verifier states `{passed: 2, timeout: 1}`.
+- Gateway health audit: latest `system-forge-runtime` Convex event includes `hermes_gateways` with 2 watched agents, no down agents, SAGE up, KERN warning-only for stale connected state, and watchdog loaded with 300s interval / last exit code 0.
 - Stale verifier recovery: live `/verification/jobs` converted old job `2` from `running` to `timeout` with error `stale running verifier exceeded 1800s`; routing decision verification JSON was updated.
 - Convex verification audit: `work:listVerificationRuns` returns `dispatch-verification:2` as `timeout` and `dispatch-verification:1` as `passed` by `codex-cli-gpt55 / gpt-5.5`.
 - Sync attribution fix: `dispatch_convex_sync.py` now credits the passed verifier attempt instead of the first attempted verifier when syncing verification runs.
@@ -191,3 +193,13 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Stale but still connected gateway state is logged as a warning instead of being restarted repeatedly, so quiet periods do not create restart loops.
 - Extended `scripts/check_forge_source_hygiene.py` so gateway watchdog source and installer are required restore artifacts.
 - Installed the watchdog LaunchAgent on the Mac. Verification: `launchctl print gui/$(id -u)/ai.hermes.gateway-watchdog` showed `run interval = 300 seconds` and `last exit code = 0`; `launchctl list` showed SAGE and KERN gateways launchd-managed with live PIDs.
+
+## 2026-07-08 00:00 WAT - Gateway health in audit
+
+- Extended Mac executor `/health` with a compact `hermes_gateways` block for SAGE/KERN and the gateway watchdog.
+- Gateway health includes launchd state/PID, gateway state age, Telegram connection state, warning/down reasons, watched-agent counts, watchdog interval, and watchdog last exit code.
+- Patched `scripts/dispatch_convex_sync.py` so LXC runtime heartbeats trim and persist the gateway summary into Convex `/audit` metadata through the existing executor health probe.
+- Redeployed the Mac executor with `scripts/deploy_mac_executor_local.sh`.
+- Redeployed `dispatch-convex-sync.service` to LXC 101.
+- Verification: executor `/health` reported SAGE `up`, KERN `warn` for stale connected state, no down gateway agents, and watchdog loaded with last exit code `0`.
+- Verification: one-shot LXC sync wrote `hermes_gateways` into the `system-forge-runtime` Convex event; public Command Center `/audit` reads the same durable event stream.

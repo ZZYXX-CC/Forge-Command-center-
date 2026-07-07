@@ -179,6 +179,27 @@ def collect_runtime_health() -> dict[str, Any]:
     quota_blocked = 0
     verifier_jobs = 0
     verifier_states: dict[str, int] = {}
+    gateway_summary: dict[str, Any] = {}
+    executor_detail = next((svc.get("detail") for svc in services if svc.get("name") == "executor"), None)
+    if isinstance(executor_detail, dict) and isinstance(executor_detail.get("hermes_gateways"), dict):
+        gateways = executor_detail["hermes_gateways"]
+        gateway_summary = gateways.get("summary") or {}
+        gateway_summary["status"] = gateways.get("status")
+        executor_detail["hermes_gateways"] = {
+            "status": gateways.get("status"),
+            "summary": gateway_summary,
+            "agents": [
+                {
+                    "agent": agent.get("agent"),
+                    "status": agent.get("status"),
+                    "reasons": agent.get("reasons") or [],
+                    "pid": ((agent.get("launchd") or {}).get("pid")),
+                    "state_age_seconds": ((agent.get("state") or {}).get("age_seconds")),
+                    "telegram_state": ((agent.get("state") or {}).get("telegram_state")),
+                }
+                for agent in gateways.get("agents", [])
+            ],
+        }
     if isinstance(registry.get("detail"), dict):
         models = registry["detail"].get("models") or []
         model_count = len(models)
@@ -220,6 +241,7 @@ def collect_runtime_health() -> dict[str, Any]:
             "quota_blocked": quota_blocked,
             "verifier_jobs": verifier_jobs,
             "verifier_states": verifier_states,
+            "hermes_gateways": gateway_summary,
         },
     }
 
