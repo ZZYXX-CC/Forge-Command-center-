@@ -13,6 +13,7 @@ DISPATCH_URL = os.environ.get("DISPATCH_URL", "http://192.168.1.178:4001").rstri
 CONVEX_URL = os.environ.get("CONVEX_URL", os.environ.get("VITE_CONVEX_URL", "http://192.168.1.179:3210")).rstrip("/")
 SYNC_INTERVAL_MS = int(os.environ.get("SYNC_INTERVAL_MS", "120000"))
 MAX_PER_TICK = int(os.environ.get("MAX_PER_TICK", "1"))
+SAGE_DISPATCH_TIMEOUT_SECONDS = int(os.environ.get("SAGE_DISPATCH_TIMEOUT_SECONDS", "180"))
 STALE_IN_PROGRESS_MS = int(os.environ.get("STALE_IN_PROGRESS_MS", str(45 * 60 * 1000)))
 MAX_STALE_REQUEUES = int(os.environ.get("MAX_STALE_REQUEUES", "1"))
 RECOVERY_SCAN_LIMIT = int(os.environ.get("RECOVERY_SCAN_LIMIT", "25"))
@@ -66,7 +67,7 @@ def dispatch_chat(payload: dict[str, Any]) -> dict[str, Any]:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=180) as response:
+        with urllib.request.urlopen(req, timeout=SAGE_DISPATCH_TIMEOUT_SECONDS) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
         body = exc.read().decode(errors="replace")
@@ -513,6 +514,56 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
     return {"workId": work_id, "status": status, "surface": chosen_surface, "model": chosen_model}
 
 
+def record_sage_dispatch_failure(item: dict[str, Any], exc: Exception, started_at: int) -> dict[str, Any]:
+    work_id = item.get("workId")
+    completed_at = int(time.time() * 1000)
+    error = str(exc)[:1000]
+    prompt = prompt_for_item(item)
+    domain = infer_domain(item)
+    authority = infer_authority(item, domain)
+    policy = verification_policy(item, domain)
+    if not work_id:
+        return {"workId": None, "status": "blocked", "error": error}
+
+    convex_mutation("work:updateWorkItem", {
+        "workId": work_id,
+        "status": "blocked",
+        "blocker": error,
+        "surface": "dispatch-auto",
+        "verificationStatus": "failed",
+        "verificationSummary": "SAGE orchestration failed before completion.",
+    })
+    convex_mutation("work:recordExecutorRun", {
+        "workId": work_id,
+        "runId": f"sage-dispatch:{work_id}:{started_at}:failed",
+        "executor": "SAGE",
+        "surface": "dispatch-auto",
+        "model": None,
+        "status": "error",
+        "promptPreview": prompt[:800],
+        "outputPreview": "",
+        "error": error,
+        "startedAt": started_at,
+        "completedAt": completed_at,
+        "latencyMs": completed_at - started_at,
+    })
+    convex_mutation("work:addWorkEvent", {
+        "workId": work_id,
+        "type": "sage_dispatch_failed",
+        "actor": "SAGE",
+        "message": error,
+        "metadata": json.dumps({
+            "domain": domain,
+            "authority": authority,
+            "verification_policy": policy,
+            "error_type": type(exc).__name__,
+            "latency_ms": completed_at - started_at,
+            "timeout_seconds": SAGE_DISPATCH_TIMEOUT_SECONDS,
+        }),
+    })
+    return {"workId": work_id, "status": "blocked", "error": error, "latencyMs": completed_at - started_at}
+
+
 def tick() -> list[dict[str, Any]]:
     maintenance = {
         "recovered": recover_stale_in_progress(),
@@ -522,25 +573,11 @@ def tick() -> list[dict[str, Any]]:
     ready = convex_query("work:listWorkItems", {"status": "ready", "limit": MAX_PER_TICK}) or []
     results = []
     for item in ready:
+        started_at = int(time.time() * 1000)
         try:
             results.append(dispatch_work_item(item))
         except Exception as exc:
-            work_id = item.get("workId")
-            if work_id:
-                convex_mutation("work:updateWorkItem", {
-                    "workId": work_id,
-                    "status": "blocked",
-                    "blocker": str(exc)[:1000],
-                    "verificationStatus": "failed",
-                    "verificationSummary": "SAGE orchestration failed before completion.",
-                })
-                convex_mutation("work:addWorkEvent", {
-                    "workId": work_id,
-                    "type": "sage_dispatch_failed",
-                    "actor": "SAGE",
-                    "message": str(exc)[:1000],
-                })
-            results.append({"workId": work_id, "status": "blocked", "error": str(exc)})
+            results.append(record_sage_dispatch_failure(item, exc, started_at))
     heartbeat = maybe_emit_sage_heartbeat(maintenance, results)
     if heartbeat:
         results.insert(0, {"heartbeat": heartbeat})

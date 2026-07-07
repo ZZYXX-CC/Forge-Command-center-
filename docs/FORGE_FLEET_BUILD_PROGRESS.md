@@ -201,6 +201,13 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Added `scripts/check_sage_blocked_recovery.py`, a fake-Convex regression check proving temporary blockers requeue while permanent manual blockers stay blocked.
 - Verification: SAGE orchestrator redeployed with `BLOCKED_RETRY_AFTER_MS=1800000` and `MAX_BLOCKED_REQUEUES=1`; live blocked smoke item `work-1783438736624` was requeued once, retried through DISPATCH, timed out again, and returned to `blocked` without entering a retry loop.
 
+## 2026-07-08 00:34 WAT - Failed SAGE attempt run records
+
+- SAGE orchestration failures now record `executorRuns` as well as `sage_dispatch_failed` audit events, so `/tasks` can show failed attempts even when DISPATCH times out before returning structured routing metadata.
+- Added `SAGE_DISPATCH_TIMEOUT_SECONDS` to the SAGE service deploy wrapper and failure metadata.
+- Failure records include prompt preview, surface `dispatch-auto`, status `error`, error text, started/completed timestamps, latency, inferred domain/authority, verification policy, and timeout seconds.
+- Verification: `scripts/check_sage_blocked_recovery.py` now covers both temporary blocked requeue and failed-attempt executor-run recording.
+
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 
 - Hardened `scripts/deploy_mac_executor_local.sh` so it installs both the live executor source and `dispatch/executor/ai.forge.dispatch-executor.plist`.

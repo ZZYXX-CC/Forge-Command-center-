@@ -41,7 +41,9 @@ WORK_ITEMS = {
 EVENTS = {
     "work-temp": [],
     "work-permanent": [],
+    "work-failed": [],
 }
+EXECUTOR_RUNS = []
 
 
 def fake_query(path: str, args: dict):
@@ -70,6 +72,9 @@ def fake_mutation(path: str, args: dict):
     if path == "work:addWorkEvent":
         EVENTS.setdefault(args["workId"], []).append(copy.deepcopy(args))
         return args["workId"]
+    if path == "work:recordExecutorRun":
+        EXECUTOR_RUNS.append(copy.deepcopy(args))
+        return args["runId"]
     if path == "work:upsertWorkItem":
         WORK_ITEMS[args["workId"]] = copy.deepcopy(args)
         return args["workId"]
@@ -82,6 +87,18 @@ def main() -> int:
     S.BLOCKED_RETRY_AFTER_MS = 30 * 60 * 1000
     S.MAX_BLOCKED_REQUEUES = 1
     recovered = S.recover_blocked_dispatch_items()
+    failed_item = {
+        "workId": "work-failed",
+        "title": "Failed dispatch bookkeeping",
+        "status": "ready",
+        "priority": "medium",
+        "orchestrator": "SAGE",
+        "executor": "DISPATCH",
+        "owner": "kern",
+        "summary": "Exercise failure artifact recording.",
+    }
+    WORK_ITEMS["work-failed"] = copy.deepcopy(failed_item)
+    failure = S.record_sage_dispatch_failure(failed_item, TimeoutError("timed out"), NOW - 1000)
     payload = {
         "ok": (
             recovered == [{"workId": "work-temp", "status": "requeued", "retry": 1}]
@@ -90,11 +107,22 @@ def main() -> int:
             and WORK_ITEMS["work-permanent"]["status"] == "blocked"
             and len(EVENTS["work-temp"]) == 1
             and EVENTS["work-temp"][0]["type"] == "sage_blocked_requeued"
+            and failure["status"] == "blocked"
+            and WORK_ITEMS["work-failed"]["status"] == "blocked"
+            and len(EXECUTOR_RUNS) == 1
+            and EXECUTOR_RUNS[0]["status"] == "error"
+            and EXECUTOR_RUNS[0]["error"] == "timed out"
+            and len(EVENTS["work-failed"]) == 1
+            and EVENTS["work-failed"][0]["type"] == "sage_dispatch_failed"
         ),
         "recovered": recovered,
+        "failure": failure,
         "temporary": WORK_ITEMS["work-temp"],
         "permanent": WORK_ITEMS["work-permanent"],
+        "failed": WORK_ITEMS["work-failed"],
         "events": EVENTS["work-temp"],
+        "failedEvents": EVENTS["work-failed"],
+        "executorRuns": EXECUTOR_RUNS,
     }
     print(json.dumps(payload, indent=2))
     return 0 if payload["ok"] else 1
