@@ -9,7 +9,7 @@
 billing_order: [free_local, free_api, subscription, metered]
 
 command_center:
-  public_url: http://command-center.nuvuestudio.net/
+  public_url: https://command-center.nuvuestudio.net/
 
 registry:
   path: registry/models.yaml

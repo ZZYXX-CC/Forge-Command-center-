@@ -18,7 +18,7 @@ import {
 import { isConvexConfigured } from '@/src/lib/convex';
 import { syncDispatchModelStatus } from '@/src/lib/useConvex';
 
-const COMMAND_CENTER_PUBLIC_URL = 'http://command-center.nuvuestudio.net/';
+const COMMAND_CENTER_PUBLIC_URL = 'https://command-center.nuvuestudio.net/';
 
 const dryRunPresets = {
   routine: {

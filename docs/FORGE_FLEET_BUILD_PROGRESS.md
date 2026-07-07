@@ -1,8 +1,8 @@
 # FORGE Fleet Build Progress
 
-Last updated: 2026-07-08 00:00 WAT
+Last updated: 2026-07-08 00:10 WAT
 
-Public dashboard: http://command-center.nuvuestudio.net/
+Public dashboard: https://command-center.nuvuestudio.net/
 
 ## Current Status
 
@@ -42,11 +42,11 @@ Public dashboard: http://command-center.nuvuestudio.net/
 
 ## How To Track
 
-- Live UI: `http://command-center.nuvuestudio.net/dispatch`
+- Live UI: `https://command-center.nuvuestudio.net/dispatch`
 - DISPATCH status: `python3 dispatch/dispatch_status.py`
 - Registry API: `http://192.168.1.178:4001/registry/status`
 - Verifier API: `http://192.168.1.178:4001/verification/jobs`
-- Public verifier proxy: `http://command-center.nuvuestudio.net/api/dispatch/verification/jobs`
+- Public verifier proxy: `https://command-center.nuvuestudio.net/api/dispatch/verification/jobs`
 - Convex sync service: `ssh forge-node-01 "pct exec 101 -- systemctl status dispatch-convex-sync --no-pager"`
 - SAGE orchestrator service: `ssh forge-node-01 "pct exec 101 -- systemctl status forge-sage-orchestrator --no-pager"`
 - Exact model alias check: `python3 scripts/check_dispatch_model_aliases.py`
@@ -71,12 +71,12 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Gemini default executor smoke: direct `/run` with no explicit model returned `GEMINI_DEFAULT_MODEL_OK` through `gemini-3.5-flash`; the executor now reports the resolved default model in its JSON response.
 - UI route dry-run after Gemini reorder: selected `gemini-cli / gemini-3.5-flash` as primary and kept Flash Lite, Gemini/Gemma fallbacks, Cursor verification, and free recovery behind it.
 - Mac executor local deploy: added `scripts/deploy_mac_executor_local.sh` to prevent repo/live executor drift.
-- Public dashboard health: `http://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200.
+- Public dashboard health: `https://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200.
 - OpenAI-compatible dry-run: `execution_routine` returned `would_execute(dry_run)` in about 1.3s and selected `ollama / qwen2.5-coder:14b` without executing.
 - Convex sync one-shot: `{"models": 23, "decisions": 50, "jobs": 2}` after refresh-before-sync patch.
 - Convex sync model refresh: sync worker now reloads DISPATCH registry/runtime status before pushing model rows to Convex.
-- Command Center public deploy: `http://command-center.nuvuestudio.net/healthz` returned `ok`.
-- Public DISPATCH proxy: `http://command-center.nuvuestudio.net/api/dispatch/registry/status` returned `200`.
+- Command Center public deploy: `https://command-center.nuvuestudio.net/healthz` returned `ok`.
+- Public DISPATCH proxy: `https://command-center.nuvuestudio.net/api/dispatch/registry/status` returned `200`.
 - Convex query check: 16 model rows, 16 runtime rows, 0 ready work items.
 - Active services: `dispatch-service`, `dispatch-convex-sync`, `forge-sage-orchestrator`, and Command Center `nginx`.
 - Provider smoke: `nim-nemotron` and `nim-minimax` both answered tiny real completion checks; ZenMux Sonnet/Fable both returned `HTTP 402 Payment Required`.
@@ -95,7 +95,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - SAGE dry-run recovery-loop smoke: created `work-1783422673327`, ran one SAGE tick, and verified Convex recorded `status=done`, `dryRun=true`, `owner=kern`, `surface=nim`, `model=deepseek-ai/deepseek-v4-pro`, `verificationStatus=waived`, executor run status `ok`, and why log with `KERN authority applies for infrastructure.` No live model execution or verifier job was started.
 - Runtime refresh service deploy: `dispatch-convex-sync.service` redeployed and active; its model sync now calls `POST /registry/refresh` before pushing model/runtime rows to Convex.
 - Validation after refresh-loop patch: Python compile passed for DISPATCH router/service/executor and worker scripts; `npm run lint` and `npm run build` passed.
-- Public status after refresh-loop patch: `http://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200; `litellm`, `dispatch-service`, `dispatch-convex-sync`, `forge-sage-orchestrator`, and Command Center `nginx` are active.
+- Public status after refresh-loop patch: `https://command-center.nuvuestudio.net/healthz` returned `ok`; public registry proxy returned HTTP 200; `litellm`, `dispatch-service`, `dispatch-convex-sync`, `forge-sage-orchestrator`, and Command Center `nginx` are active.
 - Runtime health heartbeat: deployed `dispatch-convex-sync.service` writes `runtime_health_changed` / `runtime_health_heartbeat` events to Convex. Latest deployed loop reported `healthy`, 11 monitored services, 23 registry models, 3 unavailable models, 2 quota-blocked models, and verifier states `{passed: 2, timeout: 1}`.
 - Gateway health audit: latest `system-forge-runtime` Convex event includes `hermes_gateways` with 2 watched agents, no down agents, SAGE up, KERN warning-only for stale connected state, and watchdog loaded with 300s interval / last exit code 0.
 - Stale verifier recovery: live `/verification/jobs` converted old job `2` from `running` to `timeout` with error `stale running verifier exceeded 1800s`; routing decision verification JSON was updated.
@@ -130,7 +130,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 
 ## 2026-07-07 16:44 WAT - Final SAGE intake smoke
 
-- Public Command Center redeployed after SAGE-only chat simplification: `http://command-center.nuvuestudio.net/healthz` returned `ok`.
+- Public Command Center redeployed after SAGE-only chat simplification: `https://command-center.nuvuestudio.net/healthz` returned `ok`.
 - Lint/build passed after final UI edits.
 - Dry-run intake smoke `work-1783438873453` completed end-to-end: Convex ready item -> SAGE orchestrator -> DISPATCH dry-run -> Convex executor run/routing decision/events.
 - DISPATCH selected `nim / deepseek-ai/deepseek-v4-pro`; why-log recorded KERN authority for infrastructure and ZenMux skipped as `quota_exhausted`.
@@ -144,7 +144,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Added terminal-style visible clear support: type `clear` in the log prompt or use the clear icon. This clears only the visible stream; durable Convex history remains visible in recent detail/search.
 - Added Command Center nav entry `Audit Logs`.
 - Added same-origin nginx Convex proxy under `/api/convex/` and `/api/convex-site/` because browsers block public pages from opening websockets directly to private LAN IPs.
-- Updated `scripts/deploy_command_center_lxc.sh` to build production with `VITE_CONVEX_URL=http://command-center.nuvuestudio.net/api/convex` by default.
+- Updated `scripts/deploy_command_center_lxc.sh` to build production with same-origin `VITE_CONVEX_URL` through the Command Center Convex proxy.
 - Verification: Convex functions deployed; Command Center redeployed; `npm run lint` and production build passed; public `/audit` loaded with 22 events, including `sage_dispatch_failed`, `sage_dispatch_requeued`, `sage_verification_reconciled`, and `audit_smoke`.
 - Browser smoke verified that typing `clear` resets the visible stream to zero while the durable right-side event history remains present.
 
@@ -167,6 +167,14 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - The check scans source for raw NVIDIA/OpenRouter/Telegram-token patterns while allowing documented placeholders only.
 - Verification: `python3 scripts/check_forge_source_hygiene.py` returned `FORGE source hygiene ok`.
 - Full validation at 2026-07-07 23:42 WAT: Python compile passed for worker/router/executor scripts; `python3 scripts/check_forge_source_hygiene.py` passed; `python3 scripts/check_dispatch_model_aliases.py` passed with required aliases present; `python3 scripts/check_dispatch_recovery_route.py` selected NIM Nemotron when subscription/ZenMux paths were simulated as exhausted; `npm run lint` and `npm run build` passed; `python3 dispatch/dispatch_status.py` showed LiteLLM, DISPATCH, and Executor UP.
+
+## 2026-07-08 00:06 WAT - HTTPS dashboard realtime fix
+
+- Fixed blank `/tasks` and `/audit` pages over HTTPS. The production build was using an `http://` Convex proxy URL, which made the browser derive an insecure `ws://` realtime connection after Cloudflare/HSTS upgraded the page to HTTPS.
+- Updated `scripts/deploy_command_center_lxc.sh` to default `PUBLIC_URL` to `https://command-center.nuvuestudio.net`, producing secure Convex `wss://` websocket traffic for public dashboard routes.
+- The deploy script now also patches the Command Center nginx CSP to allow both `https://command-center.nuvuestudio.net` and `wss://command-center.nuvuestudio.net` in `connect-src`.
+- Updated Command Center metadata/docs to prefer `https://command-center.nuvuestudio.net/`.
+- Verification: production build passed, source hygiene passed, Command Center redeployed to LXC 104, public health returned `ok`, and the live HTML references the fresh bundle `assets/index-BcrWazIP.js`.
 
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 

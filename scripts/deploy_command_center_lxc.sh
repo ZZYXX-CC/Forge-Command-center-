@@ -7,7 +7,7 @@ LXC_ID="${LXC_ID:-104}"
 REMOTE_TMP="/tmp/command-center-deploy-$(date +%Y%m%d%H%M%S)"
 REMOTE_TAR="$REMOTE_TMP/dist.tgz"
 WEB_ROOT="${WEB_ROOT:-/var/www/forge-command-center}"
-PUBLIC_URL="${PUBLIC_URL:-http://command-center.nuvuestudio.net}"
+PUBLIC_URL="${PUBLIC_URL:-https://command-center.nuvuestudio.net}"
 export VITE_CONVEX_URL="${VITE_CONVEX_URL:-${PUBLIC_URL%/}/api/convex}"
 export VITE_CONVEX_SITE_URL="${VITE_CONVEX_SITE_URL:-${PUBLIC_URL%/}/api/convex-site}"
 
@@ -33,6 +33,33 @@ ssh "$PROXMOX_HOST" "
     rm -rf \"$WEB_ROOT\"/*
     tar -xzf /tmp/command-center-deploy/dist.tgz -C \"$WEB_ROOT\"
     chown -R www-data:www-data \"$WEB_ROOT\"
+    python3 - <<PY
+from pathlib import Path
+path = Path(\"/etc/nginx/sites-enabled/forge-command-center\")
+text = path.read_text()
+q = chr(39)
+csp_value = (
+    f\"default-src {q}self{q}; \"
+    f\"script-src {q}self{q} {q}unsafe-inline{q} https://static.cloudflareinsights.com; \"
+    f\"style-src {q}self{q} {q}unsafe-inline{q} https://fonts.googleapis.com; \"
+    f\"img-src {q}self{q} data:; \"
+    f\"font-src {q}self{q} https://fonts.gstatic.com; \"
+    f\"connect-src {q}self{q} https://command-center.nuvuestudio.net wss://command-center.nuvuestudio.net http://command-center.nuvuestudio.net ws://command-center.nuvuestudio.net https://api.iconify.design https://api.unisvg.com https://api.simplesvg.com; \"
+    f\"frame-ancestors {q}self{q};\"
+)
+csp = f\"add_header Content-Security-Policy \\\"{csp_value}\\\" always;\"
+lines = []
+replaced = False
+for line in text.splitlines():
+    if \"add_header Content-Security-Policy\" in line:
+        lines.append(\"    \" + csp)
+        replaced = True
+    else:
+        lines.append(line)
+if not replaced:
+    lines.append(\"    \" + csp)
+path.write_text(\"\\n\".join(lines) + \"\\n\")
+PY
     nginx -t
     systemctl reload nginx
   '
