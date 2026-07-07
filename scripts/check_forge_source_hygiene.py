@@ -19,6 +19,7 @@ REQUIRED_SOURCE = [
     "dispatch/router/dispatch_router.py",
     "dispatch/router/dispatch_service.py",
     "dispatch/executor/executor.py",
+    "dispatch/executor/ai.forge.dispatch-executor.plist",
     "scripts/dispatch_convex_sync.py",
     "scripts/sage_orchestrator.py",
     "scripts/telegram_intake.py",

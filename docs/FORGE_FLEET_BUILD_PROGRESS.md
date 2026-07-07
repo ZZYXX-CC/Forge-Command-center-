@@ -1,6 +1,6 @@
 # FORGE Fleet Build Progress
 
-Last updated: 2026-07-07 23:42 WAT
+Last updated: 2026-07-07 23:44 WAT
 
 Public dashboard: http://command-center.nuvuestudio.net/
 
@@ -35,6 +35,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 | Mac executor deploy script | Done | `scripts/deploy_mac_executor_local.sh` copies repo executor source to `~/.dispatch-executor/executor.py`, restarts `ai.forge.dispatch-executor`, and verifies `/health`. |
 | Synthetic route self-test | Done | Work items now support `dryRun`; `/tasks` can create a route self-test item, and SAGE passes `dry_run: true` through DISPATCH while still recording events, executorRuns, and routingDecisions. |
 | Source hygiene gate | Done | `scripts/check_forge_source_hygiene.py` verifies required deployable source exists, local artifacts are ignored, and raw API/bot token patterns are absent. |
+| Mac executor self-healing deploy | Done | `scripts/deploy_mac_executor_local.sh` installs the LaunchAgent plist, bootstraps/kickstarts launchd, validates health, and keeps `:4100` alive with `KeepAlive`. |
 
 ## How To Track
 
@@ -160,3 +161,11 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - The check scans source for raw NVIDIA/OpenRouter/Telegram-token patterns while allowing documented placeholders only.
 - Verification: `python3 scripts/check_forge_source_hygiene.py` returned `FORGE source hygiene ok`.
 - Full validation at 2026-07-07 23:42 WAT: Python compile passed for worker/router/executor scripts; `python3 scripts/check_forge_source_hygiene.py` passed; `python3 scripts/check_dispatch_model_aliases.py` passed with required aliases present; `python3 scripts/check_dispatch_recovery_route.py` selected NIM Nemotron when subscription/ZenMux paths were simulated as exhausted; `npm run lint` and `npm run build` passed; `python3 dispatch/dispatch_status.py` showed LiteLLM, DISPATCH, and Executor UP.
+
+## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
+
+- Hardened `scripts/deploy_mac_executor_local.sh` so it installs both the live executor source and `dispatch/executor/ai.forge.dispatch-executor.plist`.
+- The script now validates the plist with `plutil`, bootstraps the LaunchAgent when missing, enables/kickstarts it, verifies launchd can print the service, and then checks `http://127.0.0.1:4100/health`.
+- Added the LaunchAgent plist to `scripts/check_forge_source_hygiene.py` required source so a restored/new Mac setup cannot silently miss executor keepalive.
+- Verification: `./scripts/deploy_mac_executor_local.sh` returned plist `OK` and executor health with surfaces `claude-code`, `codex`, `codex-cli-gpt55`, `cursor`, `gemini-cli`, `hermes-kern-gpt55`, `kern-hermes-gpt55`, and `hermes-vael`.
+- Verification: `launchctl print gui/$(id -u)/ai.forge.dispatch-executor` showed `state = running`; `python3 dispatch/dispatch_status.py` showed LiteLLM, DISPATCH, and Executor UP.
