@@ -1,0 +1,66 @@
+# LiteLLM proxy config — DISPATCH Phase 1.
+# Fronts the free/local execution backends only. Subscription CLIs (Codex / Claude Code /
+# Cursor) are OAuth surfaces handled by the router + Mac executor, not proxied here.
+# Chain interleaves providers so one shared account cap can't sink the whole tier:
+#   free_local (Ollama) -> NIM DeepSeek -> OpenRouter Nemotron -> NIM Kimi
+#   -> OpenRouter Qwen3-Coder -> ZenMux Claude free aliases
+
+model_list:
+  - model_name: ollama-coder            # free_local, primary
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:14b
+      api_base: http://192.168.1.170:11434   # mac-mini (static lease)
+  - model_name: nim-deepseek            # NIM, strong agentic coder
+    litellm_params:
+      model: nvidia_nim/deepseek-ai/deepseek-v4-pro
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: openrouter-nemotron     # independent provider
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: nim-kimi                # NIM, agentic + long context
+    litellm_params:
+      model: nvidia_nim/moonshotai/kimi-k2.6
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: nim-nemotron            # NIM, planning + verification
+    litellm_params:
+      model: nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: nim-minimax             # NIM, orchestration + long context
+    litellm_params:
+      model: nvidia_nim/minimaxai/minimax-m3
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: openrouter-qwen         # independent provider
+    litellm_params:
+      model: openrouter/qwen/qwen3-coder:free
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: zenmux-claude-sonnet-5-free
+    litellm_params:
+      model: openai/anthropic/claude-sonnet-5-free
+      api_base: https://zenmux.ai/api/v1
+      api_key: os.environ/ZENMUX_API_KEY
+  - model_name: zenmux-claude-fable-5-free
+    litellm_params:
+      model: openai/anthropic/claude-fable-5-free
+      api_base: https://zenmux.ai/api/v1
+      api_key: os.environ/ZENMUX_API_KEY
+  # --- alternates available on NIM, uncomment to add to a chain ---
+  # nvidia_nim/z-ai/glm-5.2
+  # nvidia_nim/qwen/qwen3.5-397b-a17b
+  # nvidia_nim/deepseek-ai/deepseek-v4-flash
+
+litellm_settings:
+  num_retries: 1
+  request_timeout: 180
+  drop_params: true
+
+router_settings:
+  routing_strategy: simple-shuffle
+  fallbacks:
+    - {"ollama-coder": ["nim-deepseek", "openrouter-nemotron", "nim-kimi", "nim-nemotron", "nim-minimax", "openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"nim-deepseek": ["openrouter-nemotron", "nim-kimi", "nim-nemotron", "nim-minimax", "openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"openrouter-nemotron": ["nim-kimi", "nim-nemotron", "nim-minimax", "openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"nim-kimi": ["nim-nemotron", "nim-minimax", "openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"nim-nemotron": ["nim-minimax", "openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"nim-minimax": ["openrouter-qwen", "zenmux-claude-sonnet-5-free"]}
+    - {"openrouter-qwen": ["zenmux-claude-sonnet-5-free"]}

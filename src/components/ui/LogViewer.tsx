@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/src/lib/utils';
 import { ForgeIcon } from './ForgeIcon';
-import { MonoText } from './Primitives';
 
-interface LogEntry {
+export interface LogEntry {
   id: string;
   timestamp: string;
   level: 'info' | 'warn' | 'error' | 'debug' | 'success';
@@ -17,6 +16,10 @@ interface LogViewerProps {
   autoScroll?: boolean;
   className?: string;
   simulateInput?: boolean;
+  title?: string;
+  emptyText?: string;
+  enableCommands?: boolean;
+  onClear?: () => void;
 }
 
 const LOG_LEVEL_COLORS = {
@@ -33,9 +36,20 @@ export const LogViewer = ({
   autoScroll = true,
   className,
   simulateInput = false,
+  title = 'System Logs',
+  emptyText = 'Waiting for input...',
+  enableCommands = false,
+  onClear,
 }: LogViewerProps) => {
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs);
+  const [command, setCommand] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!simulateInput) {
+      setLogs(initialLogs.slice(-maxLogs));
+    }
+  }, [initialLogs, maxLogs, simulateInput]);
 
   useEffect(() => {
     if (simulateInput) {
@@ -76,6 +90,20 @@ export const LogViewer = ({
     }
   }, [logs, autoScroll]);
 
+  const clearVisibleLogs = () => {
+    setLogs([]);
+    onClear?.();
+  };
+
+  const runCommand = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalized = command.trim().toLowerCase();
+    if (normalized === 'clear' || normalized === 'cls') {
+      clearVisibleLogs();
+      setCommand('');
+    }
+  };
+
   return (
     <div className={cn(
       "flex flex-col bg-surface-base border border-surface-border rounded-lg overflow-hidden font-mono text-[11px]",
@@ -84,7 +112,7 @@ export const LogViewer = ({
       <div className="px-3 py-2 border-b border-surface-border bg-surface-raised flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ForgeIcon name="document-text" size={14} className="text-emerald-accent" />
-          <span className="text-text-secondary font-bold uppercase tracking-widest">System Logs</span>
+          <span className="text-text-secondary font-bold uppercase tracking-widest">{title}</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
@@ -92,7 +120,8 @@ export const LogViewer = ({
             <span className="text-[9px] text-text-muted uppercase">Live Feed</span>
           </div>
           <button 
-            onClick={() => setLogs([])}
+            onClick={clearVisibleLogs}
+            title="Clear visible log stream"
             className="text-text-muted hover:text-text-primary transition-colors"
           >
             <ForgeIcon name="refresh" size={12} />
@@ -106,7 +135,7 @@ export const LogViewer = ({
       >
         {logs.length === 0 && (
           <div className="h-full flex items-center justify-center text-text-muted italic">
-            Waiting for input...
+            {emptyText}
           </div>
         )}
         {logs.map((log) => (
@@ -120,6 +149,19 @@ export const LogViewer = ({
           </div>
         ))}
       </div>
+
+      {enableCommands && (
+        <form onSubmit={runCommand} className="px-3 py-2 border-t border-surface-border bg-surface-raised/60 flex items-center gap-2">
+          <span className="text-emerald-accent">$</span>
+          <input
+            value={command}
+            onChange={(event) => setCommand(event.target.value)}
+            className="flex-1 bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+            placeholder="type clear"
+            autoComplete="off"
+          />
+        </form>
+      )}
 
       <div className="px-3 py-1.5 border-t border-surface-border bg-surface-raised/50 flex items-center justify-between text-[9px] text-text-muted">
         <span>TOTAL ENTRIES: {logs.length}</span>

@@ -15,6 +15,8 @@ export const DomainNav: React.FC<DomainNavProps> = ({ data, activeId = 'overview
   const navigate = useNavigate();
   const navItems = [
     { id: 'bots', label: 'Team Overview', icon: 'cpu', path: '/bots' },
+    { id: 'dispatch', label: 'Dispatch', icon: 'routing-2', path: '/dispatch' },
+    { id: 'audit', label: 'Audit Logs', icon: 'document-text', path: '/audit' },
     { id: 'overview', label: 'Morning Brief', icon: 'home-smile', path: '/' },
     { id: 'trading', label: 'Trading Ops', icon: 'graph-new', path: '/trading' },
     { id: 'p2p', label: 'P2P Markets', icon: 'bolt', path: '/p2p' },

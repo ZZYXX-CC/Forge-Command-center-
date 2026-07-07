@@ -106,7 +106,7 @@ export const IncidentBanner = ({
     </div>
     <div className="flex items-center gap-4">
       <span className="text-label-sm font-mono font-bold">{id}</span>
-      <Button variant="secondary" size="xs" className="bg-white/20 border-white/30 hover:bg-white/30 text-white">
+      <Button variant="secondary" size="xs" className="bg-text-primary/20 border-text-primary/30 hover:bg-text-primary/30 text-text-primary">
         Join Incident Room
       </Button>
     </div>

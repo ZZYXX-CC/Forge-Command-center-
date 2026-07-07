@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { ConvexProvider } from 'convex/react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { OverviewState } from './types';
 import { HealthStrip } from './components/layout/HealthStrip';
@@ -15,6 +16,7 @@ import { Tasks } from './pages/Tasks';
 import { Clients } from './pages/Clients';
 import { BotTeam } from './pages/BotTeam';
 import { Content } from './pages/Content';
+import { Dispatch } from './pages/Dispatch';
 import { Finance } from './pages/Finance';
 import { Incidents } from './pages/Incidents';
 import { Deployments } from './pages/Deployments';
@@ -27,11 +29,19 @@ import { PrimitivesPage } from './pages/ui/PrimitivesPage';
 import { FeedbackPage } from './pages/ui/FeedbackPage';
 import { DataDisplayPage } from './pages/ui/DataDisplayPage';
 import { LayoutPage } from './pages/ui/LayoutPage';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { cn } from './lib/utils';
 import { ToastProvider } from './components/primitives/Toast';
 import { generateMockOverviewData } from './lib/mockData';
+import { convexClient } from './lib/convex';
 
 const queryClient = new QueryClient();
+
+const withRouteBoundary = (routeName: string, element: React.ReactNode) => (
+  <RouteErrorBoundary routeName={routeName} key={routeName}>
+    {element}
+  </RouteErrorBoundary>
+);
 
 function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -68,11 +78,6 @@ function Dashboard() {
         keysPressed = {};
       }
 
-      // g d => deployments page
-      if (keysPressed['g'] && keysPressed['d']) {
-        navigate('/deployments');
-        keysPressed = {};
-      }
 
       // g m => messaging page
       if (keysPressed['g'] && keysPressed['m']) {
@@ -100,7 +105,7 @@ function Dashboard() {
 
       // g p => p2p trading page
       if (keysPressed['g'] && keysPressed['p']) {
-        navigate('/trading/p2p');
+        navigate('/p2p');
         keysPressed = {};
       }
 
@@ -119,6 +124,12 @@ function Dashboard() {
       // g u => neural map page
       if (keysPressed['g'] && keysPressed['u']) {
         navigate('/ui/neural-map');
+        keysPressed = {};
+      }
+
+      // g d => dispatch page
+      if (keysPressed['g'] && keysPressed['d']) {
+        navigate('/dispatch');
         keysPressed = {};
       }
 
@@ -188,7 +199,9 @@ function Dashboard() {
     location.pathname === '/tasks' ? 'tasks' : 
     location.pathname === '/clients' ? 'clients' : 
     location.pathname === '/bots' ? 'bots' : 
-    location.pathname === '/content' ? 'content' : 
+    location.pathname === '/dispatch' ? 'dispatch' :
+    location.pathname === '/audit' ? 'audit' :
+    location.pathname === '/content' ? 'content' :
     location.pathname === '/settings' ? 'settings' : 
     location.pathname === '/library' ? 'library' : 
     location.pathname === '/ui/neural-map' ? 'ui-neural' : 
@@ -238,27 +251,28 @@ function Dashboard() {
           )}
 
           <Routes>
-            <Route path="/" element={<MorningBrief data={data} />} />
-            <Route path="/trading" element={<TradingOps />} />
-            <Route path="/p2p" element={<TradingP2P />} />
-            <Route path="/sites" element={<WebOps />} />
-            <Route path="/money" element={<Money data={data} />} />
-            <Route path="/finance" element={<Finance data={data} />} />
-            <Route path="/incidents" element={<Incidents data={data} />} />
-            <Route path="/deployments" element={<Deployments data={data} />} />
-            <Route path="/audit" element={<Audit data={data} />} />
-            <Route path="/messaging" element={<Messaging data={data} />} />
-            <Route path="/tasks" element={<Tasks data={data} />} />
-            <Route path="/clients" element={<Clients data={data} />} />
-            <Route path="/bots" element={<BotTeam />} />
-            <Route path="/content" element={<Content data={data} />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/library" element={<ComponentLibrary />} />
-            <Route path="/ui/neural-map" element={<NeuralMapPage />} />
-            <Route path="/ui/primitives" element={<PrimitivesPage />} />
-            <Route path="/ui/feedback" element={<FeedbackPage />} />
-            <Route path="/ui/data-display" element={<DataDisplayPage />} />
-            <Route path="/ui/layout" element={<LayoutPage />} />
+            <Route path="/" element={withRouteBoundary('Morning Brief', <MorningBrief data={data} />)} />
+            <Route path="/trading" element={withRouteBoundary('Trading Ops', <TradingOps />)} />
+            <Route path="/p2p" element={withRouteBoundary('P2P Markets', <TradingP2P />)} />
+            <Route path="/sites" element={withRouteBoundary('Sites', <WebOps />)} />
+            <Route path="/money" element={withRouteBoundary('Money', <Money data={data} />)} />
+            <Route path="/finance" element={withRouteBoundary('Finance', <Finance data={data} />)} />
+            <Route path="/incidents" element={withRouteBoundary('Incidents', <Incidents data={data} />)} />
+            <Route path="/deployments" element={withRouteBoundary('Deployments', <Deployments data={data} />)} />
+            <Route path="/audit" element={withRouteBoundary('Audit', <Audit data={data} />)} />
+            <Route path="/messaging" element={withRouteBoundary('Messaging', <Messaging data={data} />)} />
+            <Route path="/tasks" element={withRouteBoundary('Tasks', <Tasks data={data} />)} />
+            <Route path="/clients" element={withRouteBoundary('Clients', <Clients data={data} />)} />
+            <Route path="/bots" element={withRouteBoundary('Bot Team', <BotTeam />)} />
+            <Route path="/dispatch" element={withRouteBoundary('Dispatch', <Dispatch />)} />
+            <Route path="/content" element={withRouteBoundary('Content', <Content data={data} />)} />
+            <Route path="/settings" element={withRouteBoundary('Settings', <Settings />)} />
+            <Route path="/library" element={withRouteBoundary('Component Library', <ComponentLibrary />)} />
+            <Route path="/ui/neural-map" element={withRouteBoundary('Neural Map', <NeuralMapPage />)} />
+            <Route path="/ui/primitives" element={withRouteBoundary('Primitives', <PrimitivesPage />)} />
+            <Route path="/ui/feedback" element={withRouteBoundary('Feedback', <FeedbackPage />)} />
+            <Route path="/ui/data-display" element={withRouteBoundary('Data Display', <DataDisplayPage />)} />
+            <Route path="/ui/layout" element={withRouteBoundary('Layout', <LayoutPage />)} />
           </Routes>
         </div>
       </div>
@@ -269,7 +283,7 @@ function Dashboard() {
 }
 
 export default function App() {
-  return (
+  const shell = (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
@@ -278,4 +292,6 @@ export default function App() {
       </ToastProvider>
     </QueryClientProvider>
   );
+
+  return convexClient ? <ConvexProvider client={convexClient}>{shell}</ConvexProvider> : shell;
 }
