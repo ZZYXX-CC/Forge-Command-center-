@@ -1,6 +1,6 @@
 # FORGE Fleet Build Progress
 
-Last updated: 2026-07-07 23:49 WAT
+Last updated: 2026-07-07 23:56 WAT
 
 Public dashboard: http://command-center.nuvuestudio.net/
 
@@ -37,6 +37,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 | Source hygiene gate | Done | `scripts/check_forge_source_hygiene.py` verifies required deployable source exists, local artifacts are ignored, and raw API/bot token patterns are absent. |
 | Mac executor self-healing deploy | Done | `scripts/deploy_mac_executor_local.sh` installs the LaunchAgent plist, bootstraps/kickstarts launchd, validates health, and keeps `:4100` alive with `KeepAlive`. |
 | SAGE/KERN DISPATCH delegation skill | Done | Repo-owned `hermes/skills/devops/dispatch-delegate` is installed into live SAGE and KERN Hermes profiles via `scripts/install_hermes_dispatch_delegate_skill.sh`. |
+| Hermes gateway watchdog | Done | Repo-owned wrapper/watchdog source and LaunchAgent installer keep the active SAGE/KERN gateways launchd-managed and recover dead/bad gateway states. |
 
 ## How To Track
 
@@ -52,6 +53,7 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Bounded delegation dry-run: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a routine implementation route."`
 - Source hygiene: `python3 scripts/check_forge_source_hygiene.py`
 - Hermes dispatch skill install: `bash scripts/install_hermes_dispatch_delegate_skill.sh sage kern`
+- Hermes gateway watchdog install: `bash scripts/install_hermes_gateway_watchdog_local.sh`
 - ZenMux setup: `docs/ZENMUX_PROVIDER_SETUP.md`
 - This file: update after each build phase.
 
@@ -179,3 +181,13 @@ Public dashboard: http://command-center.nuvuestudio.net/
 - Installed the skill into live SAGE and KERN profiles under `/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes/profiles/{sage,kern}/skills/devops/dispatch-delegate/`.
 - Extended `scripts/check_forge_source_hygiene.py` so the delegation skill and installer are required source artifacts.
 - Verification: `python3 dispatch/dispatch_delegate.py --dry-run --task-type implementation --domain code --verification-policy time_bounded --timeout 20 "Dry-run a SAGE delegation route for a small code maintenance task. Return one sentence."` returned `status=would_execute(dry_run)` and selected `ollama / qwen2.5-coder:14b`.
+
+## 2026-07-07 23:56 WAT - Hermes gateway watchdog recovery
+
+- Added repo-owned Hermes gateway wrapper at `hermes/bin/hermes-profile-gateway`, pointed at the SSD Hermes root.
+- Added repo-owned watchdog at `hermes/bin/hermes-gateway-watchdog`.
+- Added LaunchAgent source at `hermes/LaunchAgents/ai.hermes.gateway-watchdog.plist` and installer `scripts/install_hermes_gateway_watchdog_local.sh`.
+- Watchdog checks active SAGE and KERN profile gateways every 5 minutes by default. Set `ACTIVE_AGENTS` explicitly to include additional future fleet gateways after their LaunchAgents are normalized.
+- Stale but still connected gateway state is logged as a warning instead of being restarted repeatedly, so quiet periods do not create restart loops.
+- Extended `scripts/check_forge_source_hygiene.py` so gateway watchdog source and installer are required restore artifacts.
+- Installed the watchdog LaunchAgent on the Mac. Verification: `launchctl print gui/$(id -u)/ai.hermes.gateway-watchdog` showed `run interval = 300 seconds` and `last exit code = 0`; `launchctl list` showed SAGE and KERN gateways launchd-managed with live PIDs.

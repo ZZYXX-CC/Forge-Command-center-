@@ -28,6 +28,7 @@ REQUIRED_SOURCE = [
     "scripts/deploy_dispatch_sync_service.sh",
     "scripts/deploy_litellm_config_via_proxmox.sh",
     "scripts/deploy_mac_executor_local.sh",
+    "scripts/install_hermes_gateway_watchdog_local.sh",
     "scripts/install_hermes_dispatch_delegate_skill.sh",
     "scripts/deploy_sage_orchestrator_service.sh",
     "scripts/deploy_telegram_intake_service.sh",
@@ -44,6 +45,9 @@ REQUIRED_SOURCE = [
     "hermes/skills/devops/dispatch-delegate/references/forge-executor-surfaces.md",
     "hermes/skills/devops/dispatch-delegate/references/forge-native-execution.md",
     "hermes/skills/devops/dispatch-delegate/references/mac-executor-gpt55-surfaces.md",
+    "hermes/bin/hermes-profile-gateway",
+    "hermes/bin/hermes-gateway-watchdog",
+    "hermes/LaunchAgents/ai.hermes.gateway-watchdog.plist",
 ]
 
 ALLOWED_PLACEHOLDERS = {

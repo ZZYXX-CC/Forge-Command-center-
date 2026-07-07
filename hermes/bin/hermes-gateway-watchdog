@@ -1,0 +1,156 @@
+#!/bin/zsh
+set -u
+
+UID_NUM="$(id -u)"
+HERMES_ROOT="${HERMES_ROOT:-/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes}"
+LAUNCH_AGENTS="${LAUNCH_AGENTS:-/Users/ichris/Library/LaunchAgents}"
+STATE_ROOT="${STATE_ROOT:-$HERMES_ROOT/profiles}"
+DISABLE_DIR="${DISABLE_DIR:-$HERMES_ROOT/watchdog/disabled}"
+LOG="${LOG:-/tmp/openclaw/hermes-watchdog.log}"
+ACTIVE_AGENTS=(${(s: :)${ACTIVE_AGENTS:-sage kern}})
+MAX_STATE_AGE_SECONDS="${MAX_STATE_AGE_SECONDS:-900}"
+
+mkdir -p "/tmp/openclaw" "$DISABLE_DIR"
+
+log() {
+  print -r -- "$(date -u '+%Y-%m-%dT%H:%M:%SZ') $*" >> "$LOG"
+}
+
+is_disabled() {
+  local agent="$1"
+  [[ -f "$DISABLE_DIR/$agent" || -f "$DISABLE_DIR/all" ]]
+}
+
+plist_for() {
+  print -r -- "$LAUNCH_AGENTS/ai.hermes.gateway-$1.plist"
+}
+
+label_for() {
+  print -r -- "ai.hermes.gateway-$1"
+}
+
+process_alive() {
+  local pid="$1"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+state_needs_restart() {
+  local agent="$1"
+  local state_file="$STATE_ROOT/$agent/gateway_state.json"
+  [[ -f "$state_file" ]] || return 1
+
+  /usr/bin/python3 - "$state_file" "$MAX_STATE_AGE_SECONDS" <<'PY'
+import datetime
+import json
+import sys
+
+path, max_age = sys.argv[1], int(sys.argv[2])
+try:
+    data = json.load(open(path))
+except Exception:
+    print("bad_json")
+    sys.exit(2)
+
+def parse_ts(value):
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+telegram = (data.get("platforms") or {}).get("telegram") or {}
+gateway = data.get("gateway_state")
+restart_requested = bool(data.get("restart_requested"))
+telegram_state = telegram.get("state")
+updated = parse_ts(data.get("updated_at")) or parse_ts(telegram.get("updated_at"))
+now = datetime.datetime.now(datetime.timezone.utc)
+age = (now - updated).total_seconds() if updated else 10**9
+
+if restart_requested:
+    print("restart_requested")
+    sys.exit(0)
+if gateway not in {None, "running"}:
+    print(f"gateway_state={gateway}")
+    sys.exit(0)
+if telegram_state not in {None, "connected"} and age > max_age:
+    print(f"telegram_state={telegram_state};age={int(age)}")
+    sys.exit(0)
+if age > max_age:
+    print(f"stale_connected_state;age={int(age)}")
+    sys.exit(2)
+print("state_ok")
+sys.exit(1)
+PY
+}
+
+restart_agent() {
+  local agent="$1"
+  local reason="$2"
+  local label plist
+  label="$(label_for "$agent")"
+  plist="$(plist_for "$agent")"
+
+  [[ -f "$plist" ]] || {
+    log "$agent skip: missing plist $plist"
+    return
+  }
+
+  log "$agent restart: $reason"
+  launchctl bootout "gui/$UID_NUM/$label" >/dev/null 2>&1 || true
+  sleep 1
+  launchctl bootstrap "gui/$UID_NUM" "$plist" >/dev/null 2>&1 || true
+  launchctl kickstart -k "gui/$UID_NUM/$label" >/dev/null 2>&1 || true
+}
+
+check_agent() {
+  local agent="$1"
+  local label output pid state state_reason state_code
+  label="$(label_for "$agent")"
+
+  if is_disabled "$agent"; then
+    log "$agent skip: disabled by watchdog marker"
+    return
+  fi
+
+  output="$(launchctl print "gui/$UID_NUM/$label" 2>&1 || true)"
+  if print -r -- "$output" | /usr/bin/grep -q 'Could not find service'; then
+    restart_agent "$agent" "missing launchd service"
+    return
+  fi
+
+  state="$(print -r -- "$output" | /usr/bin/awk -F'= ' '/state =/{print $2; exit}' | /usr/bin/tr -d '[:space:]')"
+  pid="$(print -r -- "$output" | /usr/bin/awk -F'= ' '/pid =/{print $2; exit}' | /usr/bin/tr -d '[:space:]')"
+
+  if print -r -- "$output" | /usr/bin/grep -q 'penalty box'; then
+    restart_agent "$agent" "launchd penalty box"
+    return
+  fi
+
+  if [[ "$state" != "running" ]]; then
+    restart_agent "$agent" "launchd state=$state"
+    return
+  fi
+
+  if ! process_alive "$pid"; then
+    restart_agent "$agent" "dead pid=$pid"
+    return
+  fi
+
+  state_reason="$(state_needs_restart "$agent")"
+  state_code="$?"
+  if [[ "$state_code" == "0" ]]; then
+    restart_agent "$agent" "$state_reason"
+    return
+  fi
+  if [[ "$state_code" == "2" ]]; then
+    log "$agent warn: $state_reason pid=$pid"
+    return
+  fi
+
+  log "$agent ok: pid=$pid"
+}
+
+for agent in "${ACTIVE_AGENTS[@]}"; do
+  check_agent "$agent"
+done

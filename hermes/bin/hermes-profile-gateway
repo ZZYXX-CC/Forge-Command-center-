@@ -1,0 +1,29 @@
+#!/bin/zsh
+set -u
+
+agent="${1:-}"
+if [[ -z "$agent" ]]; then
+  print -u2 "usage: hermes-profile-gateway <profile>"
+  exit 64
+fi
+
+export HERMES_ROOT="${HERMES_ROOT:-/Volumes/Patriot 2TB/Dev Test/Forge Core/.hermes}"
+export HERMES_HOME="$HERMES_ROOT/profiles/$agent"
+export VIRTUAL_ENV="$HERMES_ROOT/hermes-agent/venv"
+export PATH="$VIRTUAL_ENV/bin:$HERMES_ROOT/hermes-agent/node_modules/.bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+if [[ ! -d "$HERMES_HOME" ]]; then
+  print -u2 "missing Hermes profile home: $HERMES_HOME"
+  exit 78
+fi
+
+if [[ ! -x "$VIRTUAL_ENV/bin/python" ]]; then
+  print -u2 "missing Hermes Python: $VIRTUAL_ENV/bin/python"
+  exit 78
+fi
+
+mkdir -p /tmp/openclaw "$HERMES_HOME/logs"
+print -r -- "$(date -u '+%Y-%m-%dT%H:%M:%SZ') wrapper starting profile=$agent hermes_home=$HERMES_HOME" >> "$HERMES_HOME/logs/gateway-wrapper.log"
+
+cd "$HERMES_HOME" || exit 78
+exec "$VIRTUAL_ENV/bin/python" -m hermes_cli.main --profile "$agent" gateway run --replace
