@@ -385,6 +385,7 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
     prompt = prompt_for_item(item)
     dry_run = bool(item.get("dryRun"))
     now = int(time.time() * 1000)
+    run_id = f"sage-dispatch:{work_id}:{now}"
 
     convex_mutation("work:updateWorkItem", {
         "workId": work_id,
@@ -405,19 +406,33 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
     })
 
     started = int(time.time() * 1000)
-    response = dispatch_chat({
-        "model": "dispatch-auto",
-        "dry_run": dry_run,
-        "messages": [{"role": "user", "content": prompt}],
-        "routing_intent": {
-            "task_type": "implementation" if domain not in {"planning"} else "planning",
-            "domain": domain,
-            "authority_agent": authority,
-            "verification_policy": policy,
-            "workId": work_id,
-            "source": "sage_orchestrator",
-        },
+    convex_mutation("work:recordExecutorRun", {
+        "workId": work_id,
+        "runId": run_id,
+        "executor": "SAGE",
+        "surface": "dispatch-auto",
+        "model": None,
+        "status": "running",
+        "promptPreview": prompt[:800],
+        "outputPreview": "",
+        "startedAt": started,
     })
+    try:
+        response = dispatch_chat({
+            "model": "dispatch-auto",
+            "dry_run": dry_run,
+            "messages": [{"role": "user", "content": prompt}],
+            "routing_intent": {
+                "task_type": "implementation" if domain not in {"planning"} else "planning",
+                "domain": domain,
+                "authority_agent": authority,
+                "verification_policy": policy,
+                "workId": work_id,
+                "source": "sage_orchestrator",
+            },
+        })
+    except Exception as exc:
+        return record_sage_dispatch_failure(item, exc, started, run_id)
     completed = int(time.time() * 1000)
     x_dispatch = response.get("x_dispatch") or {}
     verification = x_dispatch.get("verification") or {}
@@ -462,7 +477,7 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
     })
     convex_mutation("work:recordExecutorRun", {
         "workId": work_id,
-        "runId": f"sage-dispatch:{work_id}:{now}",
+        "runId": run_id,
         "executor": "SAGE",
         "surface": chosen_surface,
         "model": chosen_model,
@@ -514,7 +529,12 @@ def dispatch_work_item(item: dict[str, Any]) -> dict[str, Any]:
     return {"workId": work_id, "status": status, "surface": chosen_surface, "model": chosen_model}
 
 
-def record_sage_dispatch_failure(item: dict[str, Any], exc: Exception, started_at: int) -> dict[str, Any]:
+def record_sage_dispatch_failure(
+    item: dict[str, Any],
+    exc: Exception,
+    started_at: int,
+    run_id: str | None = None,
+) -> dict[str, Any]:
     work_id = item.get("workId")
     completed_at = int(time.time() * 1000)
     error = str(exc)[:1000]
@@ -535,7 +555,7 @@ def record_sage_dispatch_failure(item: dict[str, Any], exc: Exception, started_a
     })
     convex_mutation("work:recordExecutorRun", {
         "workId": work_id,
-        "runId": f"sage-dispatch:{work_id}:{started_at}:failed",
+        "runId": run_id or f"sage-dispatch:{work_id}:{started_at}:failed",
         "executor": "SAGE",
         "surface": "dispatch-auto",
         "model": None,

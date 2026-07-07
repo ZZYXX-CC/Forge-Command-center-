@@ -208,6 +208,13 @@ Public dashboard: https://command-center.nuvuestudio.net/
 - Failure records include prompt preview, surface `dispatch-auto`, status `error`, error text, started/completed timestamps, latency, inferred domain/authority, verification policy, and timeout seconds.
 - Verification: `scripts/check_sage_blocked_recovery.py` now covers both temporary blocked requeue and failed-attempt executor-run recording.
 
+## 2026-07-08 00:36 WAT - Running SAGE attempt visibility
+
+- SAGE now writes a `running` executor run before calling DISPATCH, then updates the same `runId` to `ok` or `error` when the attempt completes.
+- This makes active SAGE/DISPATCH attempts visible in `/tasks` while the HTTP call is still in flight, instead of only after success or timeout.
+- Failure handling reuses the existing `running` run when available, avoiding duplicate run rows for one attempt.
+- Verification: `scripts/check_sage_blocked_recovery.py` now proves running-to-ok and running-to-error executor-run upserts in the fake Convex harness.
+
 ## 2026-07-07 23:44 WAT - Mac executor LaunchAgent recovery
 
 - Hardened `scripts/deploy_mac_executor_local.sh` so it installs both the live executor source and `dispatch/executor/ai.forge.dispatch-executor.plist`.
