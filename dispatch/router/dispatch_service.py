@@ -224,14 +224,33 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
+    def _read_json_body(self) -> dict:
+        n = int(self.headers.get("Content-Length", 0))
+        return json.loads(self.rfile.read(n) or b"{}")
+
     def do_POST(self):
         if self.path == "/registry/refresh":
             return self._send(200, {"models": registry_status(refresh=True)})
+        if self.path.startswith("/verification/decisions/") and self.path.endswith("/manual-pass"):
+            try:
+                body = self._read_json_body()
+            except Exception as e:
+                return self._send(400, {"error": {"message": str(e)}})
+            parts = self.path.strip("/").split("/")
+            decision_id = parts[2] if len(parts) == 4 else None
+            result = R.mark_decision_manually_verified(
+                decision_id,
+                reviewer=body.get("reviewer") or "sage",
+                note=body.get("note") or "",
+                evidence=body.get("evidence"),
+            )
+            if not result:
+                return self._send(404, {"error": {"message": "routing decision not found"}})
+            return self._send(200, result)
         if self.path != "/v1/chat/completions":
             return self._send(404, {"error": "not found"})
         try:
-            n = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(n) or b"{}")
+            body = self._read_json_body()
         except Exception as e:
             return self._send(400, {"error": {"message": str(e)}})
         messages = body.get("messages", [])
