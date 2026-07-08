@@ -1192,6 +1192,68 @@ def verification_state(result: dict | None, status: str | None = None) -> dict:
     return {"state": state, "attempts": attempts}
 
 
+def mark_decision_manually_verified(decision_id, reviewer: str = "sage", note: str = "",
+                                    evidence=None, db_path: str = DB_PATH) -> dict | None:
+    """Mark a routing decision as passed after external/SAGE verification.
+
+    The original routing status remains intact so the log still shows how the
+    work executed. Only structured verification state is moved to passed, and
+    any linked async verification job is mirrored to the same passed state.
+    """
+    try:
+        normalized_id = int(decision_id)
+    except (TypeError, ValueError):
+        return None
+    if normalized_id <= 0:
+        return None
+
+    con = _db(db_path)
+    row = con.execute("SELECT id, verification_json FROM routing_decisions WHERE id=?",
+                      (normalized_id,)).fetchone()
+    if not row:
+        con.close()
+        return None
+
+    try:
+        existing = json.loads(row["verification_json"] or "{}")
+    except Exception:
+        existing = {}
+    attempts = list(existing.get("attempts") or [])
+    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+    attempts.append({
+        "status": "passed",
+        "phase": "manual_review",
+        "source": "manual",
+        "reviewer": reviewer or "sage",
+        "note": note or "",
+        "evidence": evidence,
+        "ts": now,
+    })
+    result_json = {
+        "state": "passed",
+        "source": "manual",
+        "reviewer": reviewer or "sage",
+        "note": note or "",
+        "evidence": evidence,
+        "attempts": attempts,
+    }
+    encoded = json.dumps(result_json)
+    con.execute("UPDATE routing_decisions SET verification_json=? WHERE id=?",
+                (encoded, normalized_id))
+    cur = con.execute("""UPDATE verification_jobs
+        SET status=?, updated_ts=?, attempts_json=?, result_json=?, error=NULL
+        WHERE routing_decision_id=?""",
+        ("passed", now, json.dumps(attempts), encoded, normalized_id))
+    jobs_updated = cur.rowcount if cur.rowcount is not None else 0
+    con.commit()
+    con.close()
+    return {
+        "decision_id": normalized_id,
+        "verification": result_json,
+        "verification_jobs_updated": jobs_updated,
+    }
+
+
 # ---------------------------------------------------------------- log
 def _db(path: str = DB_PATH) -> sqlite3.Connection:
     con = sqlite3.connect(path)
